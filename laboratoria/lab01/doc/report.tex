@@ -85,6 +85,22 @@ oraz \texttt{BR2\_PACKAGE\_EUDEV\_ENABLE\_HWDB}:
 \begin{center}
 \texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable hwdb installation}
 \end{center}
+oraz alternatywnie \texttt{BR2\_PACKAGE\_IFPLUGD}:
+\begin{center}
+\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ ifplugd}
+\end{center}
+lub \texttt{BR2\_PACKAGE\_NETPLUG}:
+\begin{center}
+\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ netplug}
+\end{center}
+
+\begin{textfile}
+mkdir /sd
+mount /dev/mmcblk0p1 /sd
+rm /sd/zImage
+ifconfig eth0 up
+udhcpc
+\end{textfile}
 
 \noindent Dzięki włączeniu \texttt{eudev}, możemy skonfigurować automatyczne łączenie z siecią dodając regułę do \href{https://github.com/maximeh/buildroot/blob/master/support/scripts/mkusers}{\texttt{/etc/udev/rules.d}}.
 
