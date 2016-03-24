@@ -68,20 +68,20 @@ Opcje, o których mowa poniżej, należy włączyć w konfiguracji \emph{Buildro
 
 \subsection{Konfiguracja sieci}
 
-Aby włączyć obsługę DHCP, należy wybrać opcję:
+Aby włączyć obsługę DHCP, należy wybrać opcję \texttt{BR2\_PACKAGE\_DHCPCD}:
 \begin{center}
 \texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ dhcpcd}
 \end{center}
 
-\noindent Do skonfigurowania sieci w taki sposób, aby \emph{Raspberry~Pi} łączyło się z siecią automatycznie po podłączeniu kabla sieciowego, można włączyć pakiet~\texttt{eudev} wybierając:
+\noindent Do skonfigurowania sieci w taki sposób, aby \emph{Raspberry~Pi} łączyło się z siecią automatycznie po podłączeniu kabla sieciowego, można włączyć pakiet~\texttt{eudev} wybierając opcję \texttt{BR2\_PACKAGE\_EUDEV}:
 \begin{center}
 \texttt{System configuration \textrightarrow\ /dev management\ \textrightarrow\\Dynamic using devtmpfs + eudev}
 \end{center}
-a następnie:
+a następnie zaznaczając opcję \texttt{BR2\_PACKAGE\_EUDEV\_RULES\_GEN}:
 \begin{center}
 \texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable rules generator}
 \end{center}
-oraz:
+oraz \texttt{BR2\_PACKAGE\_EUDEV\_ENABLE\_HWDB}:
 \begin{center}
 \texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable hwdb installation}
 \end{center}
@@ -94,7 +94,7 @@ Po dodaniu reguł należy uruchomić \texttt{udevadm control -{}-reload-rules}, 
 
 \subsection{Nazwa systemu}
 
-Aby zmienić nazwę systemu należy wybrać:
+Aby zmienić nazwę systemu należy wypełnić opcję \texttt{ BR2\_TARGET\_GENERIC\_HOSTNAME}:
 
 \begin{center}
 \texttt{System configuration \textrightarrow\ System hostname}
@@ -106,7 +106,7 @@ Aby zmienić nazwę systemu należy wybrać:
 
 \subsection{NTP}
 
-Aby włączyć automatyczną aktualizację czasu systemu przy pomocy protokołu NTP, należy włączyć \emph{daemona} NTP wybierając:
+Aby włączyć automatyczną aktualizację czasu systemu przy pomocy protokołu NTP, należy włączyć \emph{daemona} NTP wybierając opcję \texttt{BR2\_PACKAGE\_NTP}:
 
 \begin{center}
 \texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ ntp \textrightarrow\ ntpd}
@@ -116,7 +116,7 @@ Aby włączyć automatyczną aktualizację czasu systemu przy pomocy protokołu 
 
 \subsection{Serwer HTTP}
 
-Aby zainstalować serwer HTTP, serwujący proste, statyczne strony WWW, włączamy opcję aktywującą~\emph{Apache'a}:
+Aby zainstalować serwer HTTP, serwujący proste, statyczne strony WWW, włączamy opcję aktywującą~\emph{Apache'a} \texttt{BR2\_PACKAGE\_APACHE}:
 
 \begin{center}
 \texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ apache}
@@ -126,7 +126,7 @@ Aby zainstalować serwer HTTP, serwujący proste, statyczne strony WWW, włącza
 
 \subsection{Użytkownicy systemu}
 
-Aby dodać użytkownika do systemu, wchodzimy do:
+Aby dodać użytkownika do systemu, wypełniamy opcję \texttt{BR2\_ROOTFS\_USERS\_TABLES} wchodząc do:
 
 \begin{center}
 \texttt{System configuration \textrightarrow\ Path to the users tables}
