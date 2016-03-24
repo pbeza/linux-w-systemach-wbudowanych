@@ -1,0 +1,150 @@
+\documentclass{article}
+
+\usepackage[OT4,plmath]{polski}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{parskip}
+%\usepackage[fixlanguage]{babelbib}
+%\selectbiblanguage{polish}
+%\setlength{\parindent}{24pt}
+%\linespread{1.1}
+
+\frenchspacing
+
+\newenvironment{textfile}{\ttfamily}{\par}
+
+%------------------------------------------------------------------------------
+
+\title{Linux w systemach wbudowanych\\Laboratorium \#1}
+
+\author{\href{mailto:bezap@student.mini.pw.edu.pl}{Patryk \textsc{Bęza}}, \href{mailto:spychalam@student.mini.pw.edu.pl}{Maciej \textsc{Spychała}}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\begin{tabular}{ll}
+Data laboratorium 1A: & 17 III 2016\\
+Data laboratorium 1B: & 24 III 2016\\
+Wykładowca: & \href{mailto:wzab@ise.pw.edu.pl}{dr inż. Wojciech Zabołotny}
+\end{tabular}
+\end{center}
+
+%\begin{abstract}
+%Abstract text
+%\end{abstract}
+
+%------------------------------------------------------------------------------
+
+\section{Zadanie}
+\label{task}
+
+Zadaniem laboratorium jest skonfigurowanie \emph{\href{https://buildroot.org/}{Buildroot}'a} i \emph{\href{https://www.raspberrypi.org/}{Raspberry~Pi}} tak, aby \emph{Raspberry~Pi}:
+
+\begin{enumerate}
+\item Automatycznie łączył się z siecią, używając protokołu DHCP do otrzymania parametrów sieci. Jeśli kabel sieciowy nie jest podłączony, połączenie powinno zostać zestawione automatycznie po podłączeniu kabla. Odłączenie kabla powinno powodować wyłączenie połączenia.
+\item Miał przydzieloną nazwę systemu w postaci \texttt{nazwisko1\_nazwisko2}, czyli w tym przypadku: \texttt{Beza\_Spychala}.
+\item Automatycznie aktualizował czas systemowy, wykorzystując do tego klienta NTP (najlepiej z wykorzystaniem \emph{NTP server pool}).
+\item Miał zainstalowany dowolny serwer HTTP udostępniający statyczne strony WWW, np.~serwer~\emph{Apache}.
+\item Miał poza użytkownikiem \texttt{root}, użytkownika domyślnego, którego hasło jest ustawiane przy starcie systemu.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Konfiguracja}
+
+Poniżej opisano kroki jakie trzeba podjąć, aby skonfigurować \emph{Buildroot'a} i \emph{Raspberry~Pi} tak, aby spełnić wymagania zadania opisane w rozdziale~\ref{task}.
+
+Opcje, o których mowa poniżej, należy włączyć w konfiguracji \emph{Buildroot'a} po uruchomieniu komendy~\texttt{make menuconfig}. Poniżej założono, że korzystamy z \emph{Buildroot'a} w wersji \emph{2016.02}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja sieci}
+
+Aby włączyć obsługę DHCP, należy wybrać opcję:
+\begin{center}
+\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ dhcpcd}
+\end{center}
+
+\noindent Do skonfigurowania sieci w taki sposób, aby \emph{Raspberry~Pi} łączyło się z siecią automatycznie po podłączeniu kabla sieciowego, można włączyć pakiet~\texttt{eudev} wybierając:
+\begin{center}
+\texttt{System configuration \textrightarrow\ /dev management\ \textrightarrow\\Dynamic using devtmpfs + eudev}
+\end{center}
+a następnie:
+\begin{center}
+\texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable rules generator}
+\end{center}
+oraz:
+\begin{center}
+\texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable hwdb installation}
+\end{center}
+
+\noindent Dzięki włączeniu \texttt{eudev}, możemy skonfigurować automatyczne łączenie z siecią dodając regułę do \href{https://github.com/maximeh/buildroot/blob/master/support/scripts/mkusers}{\texttt{/etc/udev/rules.d}}.
+
+Po dodaniu reguł należy uruchomić \texttt{udevadm control -{}-reload-rules}, aby system załadował dodane przez nas reguły.
+
+%------------------------------------------------------------------------------
+
+\subsection{Nazwa systemu}
+
+Aby zmienić nazwę systemu należy wybrać:
+
+\begin{center}
+\texttt{System configuration \textrightarrow\ System hostname}
+\end{center}
+
+\noindent i ustawić własną nazwę systemu.
+
+%------------------------------------------------------------------------------
+
+\subsection{NTP}
+
+Aby włączyć automatyczną aktualizację czasu systemu przy pomocy protokołu NTP, należy włączyć \emph{daemona} NTP wybierając:
+
+\begin{center}
+\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ ntp \textrightarrow\ ntpd}
+\end{center}
+
+%------------------------------------------------------------------------------
+
+\subsection{Serwer HTTP}
+
+Aby zainstalować serwer HTTP, serwujący proste, statyczne strony WWW, włączamy opcję aktywującą~\emph{Apache'a}:
+
+\begin{center}
+\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ apache}
+\end{center}
+
+%------------------------------------------------------------------------------
+
+\subsection{Użytkownicy systemu}
+
+Aby dodać użytkownika do systemu, wchodzimy do:
+
+\begin{center}
+\texttt{System configuration \textrightarrow\ Path to the users tables}
+\end{center}
+
+\noindent i podajemy ścieżkę do pliku ze zdefiniowaną tablica użytkowników systemowych w formacie \href{https://buildroot.org/downloads/manual/manual.html#makeuser-syntax}{opisanym} w dokumentacji \emph{Buildroot'a}. Ścieżka ta zostanie przekazana jako parametr do~\href{https://github.com/maximeh/buildroot/blob/master/support/scripts/mkusers}{\texttt{mkusers}}.
+
+\noindent Przykładowa treść pliku definiującego użytkownika:
+
+\begin{center}
+\begin{textfile}
+uzyszkodnik -1 users -1 - /home/uzyszkodnik /bin/sh -
+\end{textfile}
+\end{center}
+
+%------------------------------------------------------------------------------
+
+%\bibliographystyle{plain}
+%\bibliography{bibliography}
+
+\end{document}
