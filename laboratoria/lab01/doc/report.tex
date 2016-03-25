@@ -8,6 +8,8 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{parskip}
+\usepackage{url}
+\usepackage{fancyvrb}
 %\usepackage[fixlanguage]{babelbib}
 %\selectbiblanguage{polish}
 %\setlength{\parindent}{24pt}
@@ -15,11 +17,12 @@
 
 \frenchspacing
 
-\newenvironment{textfile}{\ttfamily}{\par}
+\newcommand{\labnumber}{1}
+\newenvironment{ttblock}{\ttfamily}{\par}
 
 %------------------------------------------------------------------------------
 
-\title{Linux w systemach wbudowanych\\Laboratorium \#1}
+\title{Linux w systemach wbudowanych\\Laboratorium \#\labnumber}
 
 \author{\href{mailto:bezap@student.mini.pw.edu.pl}{Patryk \textsc{Bęza}}, \href{mailto:spychalam@student.mini.pw.edu.pl}{Maciej \textsc{Spychała}}}
 
@@ -31,8 +34,8 @@
 
 \begin{center}
 \begin{tabular}{ll}
-Data laboratorium 1A: & 17 III 2016\\
-Data laboratorium 1B: & 24 III 2016\\
+Data laboratorium \labnumber A: & 17 III 2016\\
+Data laboratorium \labnumber B: & 24 III 2016\\
 Wykładowca: & \href{mailto:wzab@ise.pw.edu.pl}{dr inż. Wojciech Zabołotny}
 \end{tabular}
 \end{center}
@@ -49,11 +52,11 @@ Wykładowca: & \href{mailto:wzab@ise.pw.edu.pl}{dr inż. Wojciech Zabołotny}
 Zadaniem laboratorium jest skonfigurowanie \emph{\href{https://buildroot.org/}{Buildroot}'a} i \emph{\href{https://www.raspberrypi.org/}{Raspberry~Pi}} tak, aby \emph{Raspberry~Pi}:
 
 \begin{enumerate}
-\item Automatycznie łączył się z siecią, używając protokołu DHCP do otrzymania parametrów sieci. Jeśli kabel sieciowy nie jest podłączony, połączenie powinno zostać zestawione automatycznie po podłączeniu kabla. Odłączenie kabla powinno powodować wyłączenie połączenia.
-\item Miał przydzieloną nazwę systemu w postaci \texttt{nazwisko1\_nazwisko2}, czyli w tym przypadku: \texttt{Beza\_Spychala}.
-\item Automatycznie aktualizował czas systemowy, wykorzystując do tego klienta NTP (najlepiej z wykorzystaniem \emph{NTP server pool}).
-\item Miał zainstalowany dowolny serwer HTTP udostępniający statyczne strony WWW, np.~serwer~\emph{Apache}.
-\item Miał poza użytkownikiem \texttt{root}, użytkownika domyślnego, którego hasło jest ustawiane przy starcie systemu.
+\item Automatycznie łączyło się z siecią, używając protokołu DHCP do otrzymania parametrów sieci. Jeśli kabel sieciowy nie jest podłączony, połączenie powinno zostać zestawione automatycznie po podłączeniu kabla. Odłączenie kabla powinno powodować wyłączenie połączenia.
+\item Miało przydzieloną nazwę systemu w postaci \texttt{nazwisko1\_nazwisko2}, czyli w tym przypadku: \texttt{Beza\_Spychala}.
+\item Automatycznie aktualizowało czas systemowy, wykorzystując do tego klienta NTP (najlepiej z wykorzystaniem \emph{NTP server pool}).
+\item Miało zainstalowany dowolny serwer HTTP udostępniający statyczne strony WWW, np.~serwer~\emph{Lighthttpd} (alternatywnie: \emph{nginx} lub \emph{Apache}).
+\item Miało poza użytkownikiem \texttt{root}, użytkownika domyślnego, którego hasło jest ustawiane przy starcie systemu.
 \end{enumerate}
 
 %------------------------------------------------------------------------------
@@ -62,49 +65,101 @@ Zadaniem laboratorium jest skonfigurowanie \emph{\href{https://buildroot.org/}{B
 
 Poniżej opisano kroki jakie trzeba podjąć, aby skonfigurować \emph{Buildroot'a} i \emph{Raspberry~Pi} tak, aby spełnić wymagania zadania opisane w rozdziale~\ref{task}.
 
-Opcje, o których mowa poniżej, należy włączyć w konfiguracji \emph{Buildroot'a} po uruchomieniu komendy~\texttt{make menuconfig}. Poniżej założono, że korzystamy z \emph{Buildroot'a} w wersji \emph{2016.02}.
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja wstępna}
+
+Przed rozpoczęciem konfigurowania \emph{Buildroot'a}, w taki sposób, aby spełniał warunki zadania, należy skonfigurować podstawowe parametry \emph{Buildroot'a} zgodnie z \href{http://wzab.cba.pl/LINSW/poradnik\_laboratorium.pdf}{poradnikiem} przygotowanym przez Wykładowcę~\cite{www:wzab}, tzn. należy:
+
+\begin{enumerate}
+\item Pobrać środowisko \emph{Buildroot} w najnowszej dostępnej wersji, tj.~\texttt{2016.02}:\\
+\texttt{\$ wget https://buildroot.org/downloads/buildroot-2016.02.tar.bz2}
+
+\item Rozpakować pobrane środowisko:\\
+\texttt{\$ tar -xjf buildroot-2016.02.tar.bz2}
+
+\item Wstępnie skonfigurować do działania z płytką \emph{Raspberry~Pi}:\\
+\begin{ttblock}
+\$ cd buildroot-2016.2\\
+\$ make raspberrypi\_defconfig
+\end{ttblock}
+
+\item Uruchomić \texttt{make menuconfig}.
+
+\item Ustawić TTY opcją \texttt{BR2\_TARGET\_GENERIC\_GETTY\_PORT}:\\
+\texttt{System configuration \textrightarrow\ Run a getty (login prompt) after boot \textrightarrow\ TTY port \textrightarrow\ ttyAMA0}
+
+\item Dla poprawy szybkości pobierania zależności oraz dla uniknięcia zablokowania IP laboratoryjnego \emph{gateway'a} przez serwery, z których grupowo pobieramy pakiety, należy ustawić IP lokalnego serwera serwującego część potrzebnego oprogramowania ustawiając opcję \texttt{BR2\_PRIMARY\_SITE}:\\
+\texttt{Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ Primary download site \textrightarrow\ http://192.168.137.24/dl}
+
+\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:\\
+\texttt{Target options \textrightarrow\ Target ABI \textrightarrow\ EABI}
+
+\item Zmienić \emph{Toolchain} opcjami \texttt{BR2\_TOOLCHAIN\_EXTERNAL} i\\ \texttt{BR2\_TOOLCHAIN\_EXTERNAL\_CODESOURCERY\_ARM}:\\
+\begin{ttblock}
+Toolchain \textrightarrow\ Toolchain type \textrightarrow\ External toolchain\\
+Toolchain \textrightarrow\ Toolchain \textrightarrow\ Sourcery CodeBench ARM 2014.05
+\end{ttblock}
+
+\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:\\
+\texttt{Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel}
+\end{enumerate}
+
+Po wykonaniu powyższych kroków, możemy przejść do realizacji właściwego zadania laboratorium, co opisano w kolejnych podrozdziałach.
 
 %------------------------------------------------------------------------------
 
 \subsection{Konfiguracja sieci}
 
-Aby włączyć obsługę DHCP, należy wybrać opcję \texttt{BR2\_PACKAGE\_DHCPCD}:
-\begin{center}
-\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ dhcpcd}
-\end{center}
+Aby włączyć obsługę DHCP, należy:
+\begin{enumerate}
+\item Wybrać opcję \texttt{BR2\_PACKAGE\_DHCPCD}:\\
+\begin{ttblock}
+Target packages \textrightarrow\ Networking applications \textrightarrow\ dhcpcd
+\end{ttblock}
 
-\noindent Do skonfigurowania sieci w taki sposób, aby \emph{Raspberry~Pi} łączyło się z siecią automatycznie po podłączeniu kabla sieciowego, można włączyć pakiet~\texttt{eudev} wybierając opcję \texttt{BR2\_PACKAGE\_EUDEV}:
-\begin{center}
-\texttt{System configuration \textrightarrow\ /dev management\ \textrightarrow\\Dynamic using devtmpfs + eudev}
-\end{center}
-a następnie zaznaczając opcję \texttt{BR2\_PACKAGE\_EUDEV\_RULES\_GEN}:
-\begin{center}
-\texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable rules generator}
-\end{center}
-oraz \texttt{BR2\_PACKAGE\_EUDEV\_ENABLE\_HWDB}:
-\begin{center}
-\texttt{Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable hwdb installation}
-\end{center}
-oraz alternatywnie \texttt{BR2\_PACKAGE\_IFPLUGD}:
-\begin{center}
-\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ ifplugd}
-\end{center}
-lub \texttt{BR2\_PACKAGE\_NETPLUG}:
-\begin{center}
-\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ netplug}
-\end{center}
+\item Włączyć opcję \texttt{BR2\_SYSTEM\_DHCP}, aby podczas \emph{bootowania}, system używał DHCP do pobrania parametrów sieci:\\
+\begin{ttblock}
+System configuration \textrightarrow\ Network interface to configure through DHCP
+\end{ttblock}
 
-\begin{textfile}
-mkdir /sd
-mount /dev/mmcblk0p1 /sd
-rm /sd/zImage
-ifconfig eth0 up
-udhcpc
-\end{textfile}
+\item Wybrać pakiet \emph{ifplugd}, aby system automatycznie łączył się z siecią przy wkładaniu i wyjmowaniu kabla sieciowego do portu RJ45 -- opcja \texttt{BR2\_PACKAGE\_IFPLUGD}:\\
+\begin{ttblock}
+Target packages \textrightarrow\ Networking applications \textrightarrow\ ifplugd
+\end{ttblock}
+lub alternatywnie wybrać opcję \texttt{BR2\_PACKAGE\_NETPLUG}:\\
+\begin{ttblock}
+Target packages \textrightarrow\ Networking applications \textrightarrow\ netplug
+\end{ttblock}
 
-\noindent Dzięki włączeniu \texttt{eudev}, możemy skonfigurować automatyczne łączenie z siecią dodając regułę do \href{https://github.com/maximeh/buildroot/blob/master/support/scripts/mkusers}{\texttt{/etc/udev/rules.d}}.
+\item Stworzyć \emph{filesystem overlay} (opcja \texttt{BR2\_ROOTFS\_OVERLAY}) w postaci 3 plików tekstowych:
+\begin{enumerate}
+	\item \texttt{/etc/ifplugd/ifplugd.action}
+	\item \texttt{/etc/ifplugd/ifplugd.conf}
+	\item \texttt{/etc/init.d/ifplugd}
+\end{enumerate}
+Powyższe pliki zostały dołączone do niniejszego raportu jako załącznik.
+\end{enumerate}
 
-Po dodaniu reguł należy uruchomić \texttt{udevadm control -{}-reload-rules}, aby system załadował dodane przez nas reguły.
+\noindent W przypadku gdyby \emph{Raspberry~Pi} korzystało do połączenia z internetem z USB, należałoby:
+\begin{enumerate}
+\item Włączyć pakiet~\texttt{eudev} wybierając opcję \texttt{BR2\_PACKAGE\_EUDEV}:\\
+\begin{ttblock}
+System configuration \textrightarrow\ /dev management\ \textrightarrow\ Dynamic using devtmpfs + eudev
+\end{ttblock}
+
+\item Zaznaczyć opcję \texttt{BR2\_PACKAGE\_EUDEV\_RULES\_GEN}:\\
+\begin{ttblock}
+Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\\Enable rules generator
+\end{ttblock}
+
+\item Zaznaczyć opcję \texttt{BR2\_PACKAGE\_EUDEV\_ENABLE\_HWDB}:\\
+\begin{ttblock}
+Target packages \textrightarrow\ Hardware handling \textrightarrow\ eudev \textrightarrow\ Enable hwdb installation
+\end{ttblock}
+\end{enumerate}
+
+\noindent Dzięki włączeniu \texttt{eudev}, moglibyśmy skonfigurować automatyczne łączenie z siecią dodając regułę do \href{http://www.reactivated.net/writing_udev_rules.html}{\texttt{/etc/udev/rules.d}}~\cite{www:arch-udev}. Po dodaniu takich reguł należałoby uruchomić \texttt{udevadm control -{}-reload-rules}, aby system załadował dodane reguły.
 
 %------------------------------------------------------------------------------
 
@@ -116,7 +171,7 @@ Aby zmienić nazwę systemu należy wypełnić opcję \texttt{ BR2\_TARGET\_GENE
 \texttt{System configuration \textrightarrow\ System hostname}
 \end{center}
 
-\noindent i ustawić własną nazwę systemu.
+\noindent i ustawić własną nazwę systemu -- w naszym przypadku: \texttt{Beza\_Spychala}.
 
 %------------------------------------------------------------------------------
 
@@ -132,11 +187,28 @@ Aby włączyć automatyczną aktualizację czasu systemu przy pomocy protokołu 
 
 \subsection{Serwer HTTP}
 
-Aby zainstalować serwer HTTP, serwujący proste, statyczne strony WWW, włączamy opcję aktywującą~\emph{Apache'a} \texttt{BR2\_PACKAGE\_APACHE}:
+Aby zainstalować serwer HTTP, serwujący proste, statyczne strony WWW, włączamy opcję aktywującą~\emph{lighthttpd} \texttt{BR2\_PACKAGE\_LIGHTTPD}:
 
 \begin{center}
-\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ apache}
+\texttt{Target packages \textrightarrow\ Networking applications \textrightarrow\ lighthttpd}
 \end{center}
+
+oraz dodajemy następujące pliki jako \emph{filesystem overlay}:
+\begin{itemize}
+\item plik konfiguracyjny \texttt{/etc/lighttpd/lighttpd.conf} z podstawową konfiguracją serwera HTTP:
+\begin{Verbatim}[frame=single]
+server.document-root = "/var/www/public/"
+
+server.port = 80
+
+mimetype.assign = (
+  ".html" => "text/html",
+  ".txt" => "text/plain",
+  ".jpg" => "image/jpeg",
+  ".png" => "image/png"
+\end{Verbatim}
+\item plik \texttt{/var/www/public/index.html}, serwowany przez serwer HTTP.
+\end{itemize}
 
 %------------------------------------------------------------------------------
 
@@ -148,19 +220,46 @@ Aby dodać użytkownika do systemu, wypełniamy opcję \texttt{BR2\_ROOTFS\_USER
 \texttt{System configuration \textrightarrow\ Path to the users tables}
 \end{center}
 
-\noindent i podajemy ścieżkę do pliku ze zdefiniowaną tablica użytkowników systemowych w formacie \href{https://buildroot.org/downloads/manual/manual.html#makeuser-syntax}{opisanym} w dokumentacji \emph{Buildroot'a}. Ścieżka ta zostanie przekazana jako parametr do~\href{https://github.com/maximeh/buildroot/blob/master/support/scripts/mkusers}{\texttt{mkusers}}.
+\noindent i podajemy ścieżkę do pliku ze zdefiniowaną tablica użytkowników systemowych w formacie \href{https://buildroot.org/downloads/manual/manual.html#makeuser-syntax}{opisanym} w dokumentacji \emph{Buildroot'a}~\cite{www:makeuser-syntax}. Ścieżka ta zostanie przekazana jako parametr do~\href{https://github.com/maximeh/buildroot/blob/master/support/scripts/mkusers}{\texttt{mkusers}}.
 
-\noindent Przykładowa treść pliku definiującego użytkownika:
+\noindent Przykładowa treść pliku \texttt{users.txt}, definiującego dodanego użytkownika:
 
-\begin{center}
-\begin{textfile}
-uzyszkodnik -1 users -1 - /home/uzyszkodnik /bin/sh -
-\end{textfile}
-\end{center}
+\begin{Verbatim}[frame=single]
+uzyszkodnik -1 users -1 =password /home/uzyszkodnik /bin/sh -
+\end{Verbatim}
 
 %------------------------------------------------------------------------------
 
-%\bibliographystyle{plain}
-%\bibliography{bibliography}
+\section{Uruchamianie}
+
+Aby uruchomić \emph{Raspberry~Pi} z wyżej opianą konfiguracją, należy uruchomić kompilację \emph{Buildroot'a}, a następnie załadować tak skompilowany system na kartę pamięci SD, włożoną do slotu \emph{Raspberry~Pi}, podłączonego do sieci kablem \emph{ethernetowym}.
+
+\subsection{Kompilacja}
+
+W celu rozpoczęcia budowania systemu przeznaczonego dla \emph{Raspberry~Pi}, należy zachować zmiany poczynione w trakcie konfiguracji \emph{Buildroot'a} i wydać komendę \texttt{make}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Uruchamianie}
+
+W celu załadowania nowego obrazu systemu do pamięci \emph{Raspberry~Pi}, należy:
+\begin{enumerate}
+\item Zamontować pierwszą partycję karty pamięci SD:
+\begin{itemize}
+\item \texttt{mkdir /sd}
+\item \texttt{mount /dev/mmcblk0p1 /sd}
+\end{itemize}
+\item Usunąć stare jądro: \texttt{rm /sd/zImage}.
+\item Włączyć interfejs sieciowy \texttt{eth0} \emph{Raspberry~Pi}: \texttt{ifconfig eth0 up}.
+\item Uruchomić \emph{daemona} DHCP, aby ustalił parametry połączenia sieciowego: \texttt{udhcpc}.
+\item Uruchomić serwer SSH \texttt{dropbear}, zainstalowany na karcie SD, włożonej do slotu płytki \emph{Raspberry~Pi}.
+\item Przekopiować programem \texttt{scp} nowy obraz jądra \texttt{zImage} na kartę SD.
+\item Zrestartować \emph{Raspberry~Pi}: \texttt{reboot}.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
 
 \end{document}

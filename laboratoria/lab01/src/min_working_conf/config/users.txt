@@ -1,0 +1,1 @@
+uzyszkodnik -1 users -1 =password /home/uzyszkodnik /bin/sh -
