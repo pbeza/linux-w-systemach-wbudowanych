@@ -1,0 +1,265 @@
+\documentclass{article}
+
+\usepackage[OT4,plmath]{polski}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage{fancyvrb}
+%\usepackage[fixlanguage]{babelbib}
+%\selectbiblanguage{polish}
+%\setlength{\parindent}{24pt}
+%\linespread{1.1}
+
+\frenchspacing
+
+\newcommand{\labnumber}{2}
+\newenvironment{ttblock}{\ttfamily}{\par}
+
+%------------------------------------------------------------------------------
+
+\title{Linux w systemach wbudowanych\\Laboratorium \#\labnumber}
+
+\author{\href{mailto:bezap@student.mini.pw.edu.pl}{Patryk \textsc{Bęza}}, \href{mailto:spychalam@student.mini.pw.edu.pl}{Maciej \textsc{Spychała}}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\begin{tabular}{ll}
+Grupa laboratoryjna: & A\\
+Data laboratorium \labnumber A: & 7 IV 2016\\
+Data laboratorium \labnumber B: & 21 IV 2016 (brak zajęć 14 IV)\\
+Wykładowca: & \href{mailto:wzab@ise.pw.edu.pl}{dr inż. Wojciech Zabołotny}
+\end{tabular}
+\end{center}
+
+%\begin{abstract}
+%Abstract text
+%\end{abstract}
+
+%------------------------------------------------------------------------------
+
+\section{Zadanie}
+\label{task}
+
+Zadaniem laboratorium było:
+\begin{enumerate}
+\item Przygotowanie aplikacji w języku \emph{C}, obsługującą przyciski i diody LED.
+\item Aplikacja miała reagować na zmiany stanów przycisków bez oczekiwania aktywnego. Funkcjonalność aplikacji mogła być ustalona przez studentów. Wybrana funkcjonalność aplikacji polega na zapalaniu diod LED, tak aby zapalone diody tworzyły w systemie binarnym kolejne liczby od 0 do 15, ponieważ były dostępne 4~diody LED. Ponadto, wyświetlana liczba była również drukowana na standardowym wyjściu. Po wciśnięciu przycisku \texttt{GPIO10}, licznik przerywał działanie, wygaszając wszystkie diody, a po ponownym wciśnięciu tego samego przycisku, licznik rozpoczynał pracę od nowa.
+\item Apikacja miała zostać przekształcona w pakiet \emph{Buildroot'a}.
+\item Aplikacja miała zostać przetestowana z wykorzystaniem debuggera \texttt{gdb}.
+\item Zagadnienie dodatkowe (nieobowiązkowe), polegało na stworzeniu równoważnej aplikacji w wybranym języku skryptowym (wybrano język \emph{Python}) i porównanie wydajności działania obu implementacji.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Konfiguracja}
+
+Poniżej opisano kroki jakie trzeba podjąć, aby skonfigurować \emph{Buildroot'a} i \emph{Raspberry~Pi} tak, aby spełnić wymagania zadania opisane w rozdziale~\ref{task}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja wstępna}
+
+Przed rozpoczęciem konfigurowania \emph{Buildroot'a}, w taki sposób, aby spełniał warunki zadania, należy skonfigurować podstawowe parametry \emph{Buildroot'a} zgodnie z \href{http://wzab.cba.pl/LINSW/poradnik\_laboratorium.pdf}{poradnikiem konfiguracji}, przygotowanym przez Wykładowcę~\cite{www:wzab}, tzn. należy:
+
+\begin{enumerate}
+\item Pobrać środowisko \emph{Buildroot} w najnowszej dostępnej wersji, tj.~\texttt{2016.02}:
+
+\begin{ttblock}
+\$ wget https://buildroot.org/downloads/buildroot-2016.02.tar.bz2
+\end{ttblock}
+
+\item Rozpakować pobrane środowisko:
+
+\begin{ttblock}
+\$ tar -xjf buildroot-2016.02.tar.bz2
+\end{ttblock}
+
+\item Wstępnie skonfigurować do działania z płytką \emph{Raspberry~Pi}:
+
+\begin{ttblock}
+\$ cd buildroot-2016.2\\
+\$ make raspberrypi\_defconfig
+\end{ttblock}
+
+\item Uruchomić \texttt{make menuconfig}.
+
+\item Ustawić TTY opcją \texttt{BR2\_TARGET\_GENERIC\_GETTY\_PORT}:
+
+\begin{ttblock}
+System configuration \textrightarrow\ Run a getty (login prompt) after boot \textrightarrow\ TTY port \textrightarrow\ ttyAMA0
+\end{ttblock}
+
+\item Dla poprawy szybkości pobierania zależności oraz dla uniknięcia zablokowania IP laboratoryjnego \emph{gateway'a} przez serwery, z których grupowo pobieramy pakiety, należy ustawić IP lokalnego serwera serwującego część potrzebnego oprogramowania ustawiając opcję \texttt{BR2\_PRIMARY\_SITE}:
+
+\begin{ttblock}
+Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ Primary download site \textrightarrow\ http://192.168.137.24/dl
+\end{ttblock}
+
+\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:
+
+\begin{ttblock}
+Target options \textrightarrow\ Target ABI \textrightarrow\ EABI
+\end{ttblock}
+
+\item Zmienić \emph{Toolchain} opcjami \texttt{BR2\_TOOLCHAIN\_EXTERNAL} i\\ \texttt{BR2\_TOOLCHAIN\_EXTERNAL\_CODESOURCERY\_ARM}:
+
+\begin{ttblock}
+Toolchain \textrightarrow\ Toolchain type \textrightarrow\ External toolchain\\
+Toolchain \textrightarrow\ Toolchain \textrightarrow\ Sourcery CodeBench ARM 2014.05
+\end{ttblock}
+
+\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:
+
+\begin{ttblock}
+Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel
+\end{ttblock}
+\end{enumerate}
+
+Po wykonaniu powyższych kroków, możemy przejść do realizacji właściwego zadania laboratorium, co opisano w kolejnych podrozdziałach.
+
+%------------------------------------------------------------------------------
+
+\subsection{Aplikacja w C}
+
+Aplikacja do sterownia diodami LED została napisana z wykorzystaniem wirtualnego systemu Linux'a \href{https://www.kernel.org/doc/Documentation/filesystems/sysfs.txt}{\texttt{sysfs}}, który udostępnia m.in. takie wirtualne pliki jak:
+\begin{itemize}
+\item \url{/sys/class/gpio/export} -- aktywuje wirtualny katalog \url{/sys/class/gpio/gpioNN},
+\item \url{/sys/class/gpio/gpioNN/direction} -- ustala kierunek transmisji,
+\item \url{/sys/class/gpio/gpioNN/edge} -- ustala zbocze sygnału, na którym generowane jest systemowe przerwanie,
+\item \url{/sys/class/gpio/gpioNN/value} -- ustala wartość niską lub wysoką pinu.
+\end{itemize}
+Dzięki możliwości zapisu do ww. plików specjalnych, możemy sterować zapalaniem się i gaśnięciem poszczególnych diod LED oraz ustawiać na których zboczach sygnałów pochodzących od przycisków znajdujących się na płytce, mają być generowane przerwania, co zostało wykorzystane w dołączonych do niniejszego raportu, aplikacjach napisanych w językach \emph{C} i \emph{Python}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Paczka Buildroot'a}
+\label{brpackage}
+
+W celu przygotowania paczki \emph{Buildroot'a}, utworzono 2~katalogi:
+\begin{enumerate}
+\item \texttt{\$(BR)/package/lab02} i umieszczono w nim 2~pliki, tj.:
+\begin{enumerate}
+\item \url{Config.in} z zawartością:
+\begin{Verbatim}[frame=single]
+config BR2_PACKAGE_LAB02
+	bool "lab02"
+	help
+	  Laboratorium 02
+\end{Verbatim}
+\item \url{lab02.mk} z zawartością:
+\begin{Verbatim}[frame=single]
+LAB02_VERSION = 1.0
+LAB02_SITE = $(TOPDIR)/../lab02
+LAB02_SITE_METHOD = local
+LAB02_DEPENDENCIES = 
+
+define LAB02_BUILD_CMDS
+   $(MAKE) $(TARGET_CONFIGURE_OPTS) lab02 -C $(@D)
+endef
+define LAB02_INSTALL_TARGET_CMDS
+   $(INSTALL) -D -m 0755 $(@D)/lab02 $(TARGET_DIR)/usr/bin
+endef
+LAB02_LICENSE = Proprietary
+
+$(eval $(generic-package))
+\end{Verbatim}
+\end{enumerate}
+\item \texttt{\$(BR)/../lab02} z 2 plikami, tj.:
+\begin{enumerate}
+\item Plikiem \texttt{Makefile} aplikacji:
+\begin{Verbatim}[frame=single]
+CC=$(CROSS_COMPILE)gcc
+OBJS := main.o
+lab02: $(OBJS)
+	$(CC) -o lab02 $(OBJS)
+$(OBJS) : %.o : %.c
+	$(CC) -c $(CFLAGS) $< -o $@
+\end{Verbatim}
+\item Plikiem \url{lab02.c} z źródłem programu, napisanego w języku~\emph{C}, dołączonym do niniejszego raportu.
+\end{enumerate}
+\end{enumerate}
+
+Poza przygotowaniem ww. plików, należało dopisać do pliku \texttt{\$(BR)/package/Config.in} linijkę dodającą naszą aplikację do \emph{Buildroot'a}:
+\begin{Verbatim}[frame=single]
+source "package/lab02/Config.in"
+\end{Verbatim}
+
+Po wykonaniu ww. kroków nasz pakiet \texttt{lab02} został dodany do \emph{Buildroot'a}.
+
+%------------------------------------------------------------------------------
+
+\section{Uruchamianie}
+
+Aby uruchomić \emph{Raspberry~Pi} z wyżej opianą konfiguracją, należy uruchomić kompilację \emph{Buildroot'a}, a następnie załadować tak skompilowany system na kartę pamięci SD, włożoną do slotu \emph{Raspberry~Pi}, podłączonego do sieci kablem \emph{ethernetowym}.
+
+\subsection{Kompilacja}
+
+W celu rozpoczęcia budowania systemu przeznaczonego dla \emph{Raspberry~Pi}, należy zachować zmiany poczynione w trakcie konfiguracji \emph{Buildroot'a} i wydać komendę~\texttt{\href{https://github.com/buildroot/buildroot/blob/master/Makefile}{make}}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Ładowanie do pamięci \emph{Raspberry~Pi}}
+
+W celu załadowania nowego obrazu systemu do pamięci \emph{Raspberry~Pi}, należy:
+\begin{enumerate}
+\item Zamontować pierwszą partycję karty pamięci SD:
+\begin{itemize}
+\item \texttt{mkdir /sd}
+\item \texttt{mount /dev/mmcblk0p1 /sd}
+\end{itemize}
+\item Usunąć stare jądro: \texttt{rm /sd/zImage}.
+\item Włączyć interfejs sieciowy \texttt{eth0} \emph{Raspberry~Pi}: \texttt{\href{http://linux.die.net/man/8/ifconfig}{ifconfig} eth0 up}.
+\item Uruchomić \emph{daemona} DHCP komendą \texttt{\href{http://dev.man-online.org/man8/udhcpc/}{udhcpc}}, aby ustalił parametry połączenia sieciowego.
+\item Uruchomić serwer SSH \texttt{\href{https://matt.ucc.asn.au/dropbear/dropbear.html}{dropbear}}, zainstalowany na karcie SD, włożonej do slotu płytki \emph{Raspberry~Pi}.
+\item Przekopiować programem \texttt{\href{http://linux.die.net/man/1/scp}{scp}} nowy obraz jądra \texttt{zImage} na kartę SD.
+\item Zrestartować \emph{Raspberry~Pi} np. komendą \texttt{\href{http://linux.die.net/man/8/reboot}{reboot}}.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Załącznik}
+
+Do niniejszego raportu załączono archiwum:
+\begin{center}
+\url{lab0\labnumber\_BezaSpychala.tar.gz},
+\end{center}
+o sumie kontrolnej MD5:
+\begin{center}
+\texttt{TODO}
+\end{center}
+które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
+\begin{enumerate}
+\item W dowolnym katalogu, np. w \url{/tmp/test}, rozpakować \emph{Buildroot'a}:
+\begin{center}
+\texttt{tar -xjvf buildroot-2016.02.tar.bz2}
+\end{center}
+
+Dla ustalenia uwagi, niech rozpakowany \emph{Buildroot} będzie w~katalogu:
+\begin{center}
+\url{/tmp/test/buildroot\_2016.2}
+\end{center}
+
+\item W katalogu \url{/tmp/test} należy rozpakować archiwum \texttt{lab0\labnumber\_BezaSpychala.tar.gz}:
+\begin{center}
+\texttt{tar -xzvf lab0\labnumber\_BezaSpychala.tar.gz}
+\end{center}
+
+\item Po rozpakowaniu powstaną 2 katalogi, opisane w rozdziale~\ref{brpackage}. Należy je przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}
