@@ -56,7 +56,7 @@ Zadaniem laboratorium było:
 \item Aplikacja miała reagować na zmiany stanów przycisków bez oczekiwania aktywnego. Funkcjonalność aplikacji mogła być ustalona przez studentów. Wybrana funkcjonalność aplikacji polega na zapalaniu diod LED, tak aby zapalone diody tworzyły w systemie binarnym kolejne liczby od 0 do 15, ponieważ były dostępne 4~diody LED. Ponadto, wyświetlana liczba była również drukowana na standardowym wyjściu. Po wciśnięciu przycisku \texttt{GPIO10}, licznik przerywał działanie, wygaszając wszystkie diody, a po ponownym wciśnięciu tego samego przycisku, licznik rozpoczynał pracę od nowa.
 \item Aplikacja miała zostać przekształcona w pakiet \emph{Buildroot'a}.
 \item Aplikacja miała zostać przetestowana z wykorzystaniem debuggera \texttt{gdb}.
-\item Zagadnienie dodatkowe (nieobowiązkowe), polegało na stworzeniu równoważnej aplikacji w wybranym języku skryptowym (wybrano język \emph{Python}) i porównanie wydajności działania obu implementacji.
+\item Zagadnienie dodatkowe (nieobowiązkowe), polegało na stworzeniu równoważnej aplikacji w wybranym języku skryptowym i porównanie wydajności działania obu implementacji.
 \end{enumerate}
 
 %------------------------------------------------------------------------------
@@ -125,7 +125,9 @@ Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kern
 \end{ttblock}
 \end{enumerate}
 
-Po wykonaniu powyższych kroków, możemy przejść do realizacji właściwego zadania laboratorium, co opisano w kolejnych podrozdziałach.
+Po wykonaniu powyższych kroków, możemy przejść do realizacji właściwego zadania laboratorium. Zacznijmy od zainstalowania \texttt{gdbserver}'a, który umożliwi ,,zdalne'' \emph{debugowanie} naszej aplikacji. W tym celu w \emph{Buildroot'cie} należy włączyć opcję \texttt{BR2\_PACKAGE\_GDB\_SERVER}.
+
+Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisano w kolejnych podrozdziałach.
 
 %------------------------------------------------------------------------------
 
@@ -133,12 +135,12 @@ Po wykonaniu powyższych kroków, możemy przejść do realizacji właściwego z
 
 Aplikacja do sterownia diodami LED została napisana z wykorzystaniem wirtualnego systemu Linux'a \href{https://www.kernel.org/doc/Documentation/filesystems/sysfs.txt}{\texttt{sysfs}}, który udostępnia m.in. takie wirtualne pliki jak:
 \begin{itemize}
-\item \url{/sys/class/gpio/export} -- aktywuje wirtualny katalog \url{/sys/class/gpio/gpioNN},
-\item \url{/sys/class/gpio/gpioNN/direction} -- ustala kierunek transmisji,
-\item \url{/sys/class/gpio/gpioNN/edge} -- ustala zbocze sygnału, na którym generowane jest systemowe przerwanie,
-\item \url{/sys/class/gpio/gpioNN/value} -- ustala wartość niską lub wysoką pinu.
+\item \path{/sys/class/gpio/export} -- aktywuje wirtualny katalog \path{/sys/class/gpio/gpioNN},
+\item \path{/sys/class/gpio/gpioNN/direction} -- ustala kierunek transmisji,
+\item \path{/sys/class/gpio/gpioNN/edge} -- ustala zbocze sygnału, na którym generowane jest systemowe przerwanie,
+\item \path{/sys/class/gpio/gpioNN/value} -- ustala wartość niską lub wysoką pinu.
 \end{itemize}
-Dzięki możliwości zapisu do ww. plików specjalnych, możemy sterować zapalaniem się i gaśnięciem poszczególnych diod LED oraz ustawiać na których zboczach sygnałów pochodzących od przycisków znajdujących się na płytce, mają być generowane przerwania, co zostało wykorzystane w dołączonych do niniejszego raportu, aplikacjach napisanych w językach \emph{C} i \emph{Python}.
+Dzięki możliwości zapisu do ww. plików specjalnych, możemy sterować zapalaniem się i gaśnięciem poszczególnych diod LED oraz ustawiać na których zboczach sygnałów pochodzących od przycisków znajdujących się na płytce, mają być generowane przerwania, co zostało wykorzystane w dołączonej do niniejszego raportu aplikacji napisanej w języku \emph{C}.
 
 %------------------------------------------------------------------------------
 
@@ -147,16 +149,16 @@ Dzięki możliwości zapisu do ww. plików specjalnych, możemy sterować zapala
 
 W celu przygotowania paczki \emph{Buildroot'a}, utworzono 2~katalogi:
 \begin{enumerate}
-\item \texttt{\$(BR)/package/lab02} i umieszczono w nim 2~pliki, tj.:
+\item \path{$(BR)/package/lab02} i umieszczono w nim 2~pliki, tj.:
 \begin{enumerate}
-\item \url{Config.in} z zawartością:
+\item \path{Config.in} z zawartością:
 \begin{Verbatim}[frame=single]
 config BR2_PACKAGE_LAB02
 	bool "lab02"
 	help
 	  Laboratorium 02
 \end{Verbatim}
-\item \url{lab02.mk} z zawartością:
+\item \path{lab02.mk} z zawartością:
 \begin{Verbatim}[frame=single]
 LAB02_VERSION = 1.0
 LAB02_SITE = $(TOPDIR)/../lab02
@@ -174,7 +176,7 @@ LAB02_LICENSE = Proprietary
 $(eval $(generic-package))
 \end{Verbatim}
 \end{enumerate}
-\item \texttt{\$(BR)/../lab02} z 2 plikami, tj.:
+\item \path{$(BR)/../lab02} z 2 plikami, tj.:
 \begin{enumerate}
 \item Plikiem \texttt{Makefile} aplikacji:
 \begin{Verbatim}[frame=single]
@@ -185,16 +187,16 @@ lab02: $(OBJS)
 $(OBJS) : %.o : %.c
 	$(CC) -c $(CFLAGS) $< -o $@
 \end{Verbatim}
-\item Plikiem \url{lab02.c} z źródłem programu, napisanego w języku~\emph{C}, dołączonym do niniejszego raportu.
+\item Plikiem \path{lab02.c} z źródłem programu, napisanego w języku~\emph{C}, dołączonym do niniejszego raportu.
 \end{enumerate}
 \end{enumerate}
 
-Poza przygotowaniem ww. plików, należało dopisać do pliku \texttt{\$(BR)/package/Config.in} linijkę dodającą naszą aplikację do \emph{Buildroot'a}:
+Poza przygotowaniem ww. plików, należało dopisać do pliku \path{$(BR)/package/Config.in} linijkę dodającą naszą aplikację do \emph{Buildroot'a}:
 \begin{Verbatim}[frame=single]
 source "package/lab02/Config.in"
 \end{Verbatim}
 
-Po wykonaniu ww. kroków nasz pakiet \texttt{lab02} został dodany do \emph{Buildroot'a}.
+Po wykonaniu ww. kroków nasz pakiet \path{lab02} został dodany do \emph{Buildroot'a}.
 
 %------------------------------------------------------------------------------
 
@@ -227,34 +229,52 @@ W celu załadowania nowego obrazu systemu do pamięci \emph{Raspberry~Pi}, nale�
 
 %------------------------------------------------------------------------------
 
+\section{Debugowanie}
+
+Aby rozpocząć \emph{debugowanie} naszej aplikacji, należy uruchomić na \emph{Raspberry~Pi} serwer \texttt{gdb} np. tak:
+\begin{center}
+\texttt{gdbserver host:7654 lab02 10}
+\end{center}
+Następnie na komputerze podłączonym do naszego \emph{Raspberry~Pi}, należy uruchomić debugger \texttt{gdb}:
+\begin{center}
+\texttt{\$(BR)/output/host/usr/bin/arm-none-linux-gnueabi-gdb \$(BR)/output/build/lab02-1.0/lab02}
+\end{center}
+Powyższa komenda uruchomi \texttt{gdb} i wczyta symbole \emph{debugowania} naszej aplikacji, dzięki którym będziemy mieli dostęp m.in. do oryginalnych nazw zmiennych i funkcji, których użyliśmy w kodzie źródłowym programu.
+
+W tym momencie nie pozostaje nam nic innego, jak tylko założyć np.~\emph{watchpoint'y} na wybrane zmienne (komenda \texttt{watchpoint}), \emph{breakpoint'y} na wybrane linie programu (komenda \texttt{break}, w skrócie \texttt{b}) i rozpocząć wykonanie programu wydając komendę \texttt{continue} (w skrócie \texttt{cont} lub~\texttt{c}).
+
+Aby wypisać np. wartość zmiennej \texttt{x} należy napisać \texttt{print~x} (w skrócie~\texttt{p~x}). Pomocne mogą się okazać również inne komendy \texttt{gdb}, takie jak: \texttt{info locals}, \texttt{next}, \texttt{step} i inne wymienione w dokumentacji~\texttt{gdb}.
+
+%------------------------------------------------------------------------------
+
 \section{Załącznik}
 
 Do niniejszego raportu załączono archiwum:
 \begin{center}
-\url{lab0\labnumber\_BezaSpychala.tar.gz},
+\texttt{lab0\labnumber\_BezaSpychala.tar.gz},
 \end{center}
 o sumie kontrolnej MD5:
 \begin{center}
-\texttt{26184898f0fcb13efd87801533db061b}
+\texttt{a60b350e45037cc4c57d6fbed842a15c}
 \end{center}
 które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
 \begin{enumerate}
-\item W dowolnym katalogu, np. w \url{/tmp/test}, rozpakować \emph{Buildroot'a}:
+\item W dowolnym katalogu, np. w \path{/tmp/test}, rozpakować \emph{Buildroot'a}:
 \begin{center}
-\texttt{tar -xjvf buildroot-2016.02.tar.bz2}
+\texttt{tar xjvf buildroot-2016.02.tar.bz2}
 \end{center}
 
 Dla ustalenia uwagi, niech rozpakowany \emph{Buildroot} będzie w~katalogu:
 \begin{center}
-\url{/tmp/test/buildroot\_2016.2}
+\path{/tmp/test/buildroot_2016.2}
 \end{center}
 
-\item W katalogu \url{/tmp/test} należy rozpakować archiwum \texttt{lab0\labnumber\_BezaSpychala.tar.gz}:
+\item W katalogu \path{/tmp/test} należy rozpakować archiwum \texttt{lab0\labnumber\_BezaSpychala.tar.gz}:
 \begin{center}
-\texttt{tar -xzvf lab0\labnumber\_BezaSpychala.tar.gz}
+\texttt{tar xzvf lab0\labnumber\_BezaSpychala.tar.gz}
 \end{center}
 
-\item Po rozpakowaniu powstaną 2 katalogi, opisane w rozdziale~\ref{brpackage}. Należy je przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
+\item Po rozpakowaniu powstanie plik \path{.config} \emph{Buildroot'a} oraz 2 katalogi, opisane w rozdziale~\ref{brpackage}. Należy je przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
 \end{enumerate}
 
 %------------------------------------------------------------------------------
