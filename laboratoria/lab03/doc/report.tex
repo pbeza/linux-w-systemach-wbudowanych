@@ -1,0 +1,195 @@
+\documentclass{article}
+
+\usepackage[OT4,plmath]{polski}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage{fancyvrb}
+%\usepackage[fixlanguage]{babelbib}
+%\selectbiblanguage{polish}
+%\setlength{\parindent}{24pt}
+%\linespread{1.1}
+
+\frenchspacing
+
+\newcommand{\labnumber}{3}
+\newenvironment{ttblock}{\ttfamily}{\par}
+
+%------------------------------------------------------------------------------
+
+\title{Linux w systemach wbudowanych\\Laboratorium \#\labnumber}
+
+\author{\href{mailto:bezap@student.mini.pw.edu.pl}{Patryk \textsc{Bęza}}, \href{mailto:spychalam@student.mini.pw.edu.pl}{Maciej \textsc{Spychała}}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\begin{tabular}{ll}
+Grupa laboratoryjna: & A\\
+Data laboratorium \labnumber A: & 28 IV 2016\\
+Data laboratorium \labnumber B: & 5 V 2016\\
+Wykładowca: & \href{mailto:wzab@ise.pw.edu.pl}{dr inż. Wojciech Zabołotny}
+\end{tabular}
+\end{center}
+
+%\begin{abstract}
+%Abstract text
+%\end{abstract}
+
+%------------------------------------------------------------------------------
+
+\section{Zadanie}
+\label{task}
+
+Zadaniem laboratorium było:
+\begin{enumerate}
+\item Przygotować ,,administracyjny'' system Linux pracujący w \texttt{initramfs}, umożliwiający przygotowanie karty pamięci SD (partycjonowanie, formatowanie, przesłanie przez sieć nowej wersji systemu) do instalacji systemu Linux pracującego z systemem plików \texttt{ext2}~(3 lub~4) montowanym z partycji 2 na karcie SD. Spartycjonować i sformatować kartę tak, aby partycje 2 i 3 zawierały system plików \texttt{ext2}, \texttt{ext3} lub \texttt{ext4} (partycję 1 zostawić).
+\item Przygotować ,,użytkowy'' system Linux pracujący z systemem plików \texttt{e2fs}, zawierający serwer WWW, udostępniający pliki z partycji 3 na karcie SD (powinna być ładnie prezentowana lista dostępnych plików) i umożliwiający wgrywanie nowych plików po podaniu nazwy użytkownika i hasła (nie musi to być użytkownik i hasło systemowe).
+\item Należy też przygotować \emph{bootloader}, umożliwiający określenie (przy pomocy przycisku), który system ma zostać załadowany. Użytkownik powinien być powiadomiony diodą LED, kiedy jest badany stan przycisków (np. z sekundowym wyprzedzeniem). Jeśli żaden przycisk nie zostanie wciśnięty, powinien zostać załadowany system ,,użytkowy''. Diody LED powinny informować o tym, jaki system został wybrany.
+\end{enumerate}
+
+Plan pracy:
+\begin{enumerate}
+	\item \textbf{(3pkt.)} Przygotować początkową wersję systemu administracyjnego. Upewnić się, że zawiera on narzędzia niezbędne do:
+	\begin{enumerate}
+		\item przesłania plików przez sieć,
+		\item zarządzania kartą SD (formatowanie, tworzenie systemów plików -- \texttt{vfat} i \texttt{e4fs}, naprawa systemu plików, rozpakowanie archiwum z systemem pliku itp.),
+		\item narzędzia niezbędne do stworzenia skryptu bootloadera (\texttt{MKIMAGE}),
+		\item wygodny edytor.
+	\end{enumerate}
+	\item \textbf{(1pkt.)} Odpowiednio spertycjonować kartę SD. Jeśli partycja 1 zostanie zmieniona, należy zachować oryginalną zawartość partycji \texttt{VFAT} w ramdysku, tak aby można było ją przywrócić po utworzeniu i sformatowaniu nowych partycji.
+	\item \textbf{(3pkt.)} Utworzyć skrypt \emph{bootloadera}. Sprawdzić, że pozwala on wybrać ładowany system (np. ładując system ,,administracyjny'' z różnymi parametrami).
+	\item \textbf{(7pkt.)} Przygotować system ,,użytkowy''. Pamiętać, że ma on używać systemu plików \texttt{e4fs}. Dlatego, aby go zainstalować należy:
+		\begin{enumerate}
+			\item skopiować plik \texttt{zImage} z jądrem,
+			\item skopiować skompresowane archiwum \texttt{tar} z obrazem systemu plików i rozpakować je na drugiej partycji karty SD (oczywiście po jej zamontowaniu!),
+			\item sugeruje się zachowanie dwóch niezależnych środowisk buildroot -- jednego dla systemu ,,administracyjnego'' i drugiego dla systemu ,,użytkowego'', tak, żeby można było szybko dokonywać korekt w obu systemach.
+		\end{enumerate}
+		Ponadto należy spełnić następujące wymagania:
+		\begin{enumerate}
+			\item System ,,użytkowy'' jest poprawnie ładowany. Interfejs \texttt{eth0} jest poprawnie skonfigurowany. Partycje systemowa i danych są poprawnie zamontowane po sprawdzeniu i ewentualnej naprawie systemu plików.
+			\item Serwer WWW poprawnie udostępnia pliki z trzeciej partycji.
+			\item Serwer WWW pozwala wgrać nowy plik po uwierzytelnieniu użytkownika.
+		\end{enumerate}
+		Należy pamiętać, że serwer WWW zrealizowany na bazie \texttt{Tornado} można łatwo uruchamiać i testować na maszynie wirtualnej. \texttt{QEMU} pozwala emulować system z emulowanym dyskiem twardym lub kartą SD.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\section{Konfiguracja}
+
+Poniżej opisano kroki jakie trzeba podjąć, aby skonfigurować \emph{Buildroot'a} i \emph{Raspberry~Pi} tak, aby spełnić wymagania zadania opisane w rozdziale~\ref{task}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja wstępna}
+
+Przed rozpoczęciem konfigurowania \emph{Buildroot'a}, w taki sposób, aby spełniał warunki zadania, należy skonfigurować podstawowe parametry \emph{Buildroot'a} zgodnie z \href{http://wzab.cba.pl/LINSW/poradnik\_laboratorium.pdf}{poradnikiem konfiguracji}, przygotowanym przez Wykładowcę~\cite{www:wzab}, tzn. należy:
+
+\begin{enumerate}
+\item Pobrać środowisko \emph{Buildroot} w najnowszej dostępnej wersji, tj.~\texttt{2016.02}:
+
+\begin{ttblock}
+\$ wget https://buildroot.org/downloads/buildroot-2016.02.tar.bz2
+\end{ttblock}
+
+\item Rozpakować pobrane środowisko:
+
+\begin{ttblock}
+\$ tar -xjf buildroot-2016.02.tar.bz2
+\end{ttblock}
+
+\item Wstępnie skonfigurować do działania z płytką \emph{Raspberry~Pi}:
+
+\begin{ttblock}
+\$ cd buildroot-2016.2\\
+\$ make raspberrypi\_defconfig
+\end{ttblock}
+
+\item Uruchomić \texttt{make menuconfig}.
+
+\item Ustawić TTY opcją \texttt{BR2\_TARGET\_GENERIC\_GETTY\_PORT}:
+
+\begin{ttblock}
+System configuration \textrightarrow\ Run a getty (login prompt) after boot \textrightarrow\ TTY port \textrightarrow\ ttyAMA0
+\end{ttblock}
+
+\item Dla poprawy szybkości pobierania zależności oraz dla uniknięcia zablokowania IP laboratoryjnego \emph{gateway'a} przez serwery, z których grupowo pobieramy pakiety, należy ustawić IP lokalnego serwera serwującego część potrzebnego oprogramowania ustawiając opcję \texttt{BR2\_PRIMARY\_SITE}:
+
+\begin{ttblock}
+Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ Primary download site \textrightarrow\ http://192.168.137.24/dl
+\end{ttblock}
+
+\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:
+
+\begin{ttblock}
+Target options \textrightarrow\ Target ABI \textrightarrow\ EABI
+\end{ttblock}
+
+\item Zmienić \emph{Toolchain} opcjami \texttt{BR2\_TOOLCHAIN\_EXTERNAL} i\\ \texttt{BR2\_TOOLCHAIN\_EXTERNAL\_CODESOURCERY\_ARM}:
+
+\begin{ttblock}
+Toolchain \textrightarrow\ Toolchain type \textrightarrow\ External toolchain\\
+Toolchain \textrightarrow\ Toolchain \textrightarrow\ Sourcery CodeBench ARM 2014.05
+\end{ttblock}
+
+\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:
+
+\begin{ttblock}
+Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel
+\end{ttblock}
+\end{enumerate}
+
+Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisano w kolejnych podrozdziałach.
+
+%------------------------------------------------------------------------------
+
+\subsection{TODO}
+
+%------------------------------------------------------------------------------
+
+\section{Załącznik}
+
+Do niniejszego raportu załączono archiwum:
+\begin{center}
+\texttt{lab0\labnumber\_BezaSpychala.tar.gz},
+\end{center}
+o sumie kontrolnej MD5:
+\begin{center}
+\texttt{TODO}
+\end{center}
+które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
+\begin{enumerate}
+\item W dowolnym katalogu, np. w \path{/tmp/test}, rozpakować \emph{Buildroot'a}:
+\begin{center}
+\texttt{tar xjvf buildroot-2016.02.tar.bz2}
+\end{center}
+
+Dla ustalenia uwagi, niech rozpakowany \emph{Buildroot} będzie w~katalogu:
+\begin{center}
+\path{/tmp/test/buildroot_2016.2}
+\end{center}
+
+\item W katalogu \path{/tmp/test} należy rozpakować archiwum \texttt{lab0\labnumber\_BezaSpychala.tar.gz}:
+\begin{center}
+\texttt{tar xzvf lab0\labnumber\_BezaSpychala.tar.gz}
+\end{center}
+
+\item Po rozpakowaniu powstanie TODO, opisane w rozdziale~TODO. Należy je przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}
