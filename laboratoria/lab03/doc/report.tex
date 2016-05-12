@@ -10,6 +10,8 @@
 \usepackage{parskip}
 \usepackage{url}
 \usepackage{fancyvrb}
+\usepackage{dirtree}
+\usepackage{listings}
 %\usepackage[fixlanguage]{babelbib}
 %\selectbiblanguage{polish}
 %\setlength{\parindent}{24pt}
@@ -63,7 +65,7 @@ Plan pracy:
 	\begin{enumerate}
 		\item przesłania plików przez sieć,
 		\item zarządzania kartą SD (formatowanie, tworzenie systemów plików -- \texttt{vfat} i \texttt{e4fs}, naprawa systemu plików, rozpakowanie archiwum z systemem pliku itp.),
-		\item narzędzia niezbędne do stworzenia skryptu bootloadera (\texttt{MKIMAGE}),
+		\item narzędzia niezbędne do stworzenia skryptu bootloadera (\texttt{mkimage}),
 		\item wygodny edytor.
 	\end{enumerate}
 	\item \textbf{(1pkt.)} Odpowiednio spertycjonować kartę SD. Jeśli partycja 1 zostanie zmieniona, należy zachować oryginalną zawartość partycji \texttt{VFAT} w ramdysku, tak aby można było ją przywrócić po utworzeniu i sformatowaniu nowych partycji.
@@ -72,7 +74,7 @@ Plan pracy:
 		\begin{enumerate}
 			\item skopiować plik \texttt{zImage} z jądrem,
 			\item skopiować skompresowane archiwum \texttt{tar} z obrazem systemu plików i rozpakować je na drugiej partycji karty SD (oczywiście po jej zamontowaniu!),
-			\item sugeruje się zachowanie dwóch niezależnych środowisk buildroot -- jednego dla systemu ,,administracyjnego'' i drugiego dla systemu ,,użytkowego'', tak, żeby można było szybko dokonywać korekt w obu systemach.
+			\item sugeruje się zachowanie dwóch niezależnych środowisk \emph{Buildroot} -- jednego dla systemu ,,administracyjnego'' i drugiego dla systemu ,,użytkowego'', tak, żeby można było szybko dokonywać korekt w obu systemach.
 		\end{enumerate}
 		Ponadto należy spełnić następujące wymagania:
 		\begin{enumerate}
@@ -80,7 +82,7 @@ Plan pracy:
 			\item Serwer WWW poprawnie udostępnia pliki z trzeciej partycji.
 			\item Serwer WWW pozwala wgrać nowy plik po uwierzytelnieniu użytkownika.
 		\end{enumerate}
-		Należy pamiętać, że serwer WWW zrealizowany na bazie \texttt{Tornado} można łatwo uruchamiać i testować na maszynie wirtualnej. \texttt{QEMU} pozwala emulować system z emulowanym dyskiem twardym lub kartą SD.
+		Należy pamiętać, że serwer WWW zrealizowany na bazie \emph{Tornado} można łatwo uruchamiać i testować na maszynie wirtualnej. \texttt{QEMU} pozwala emulować system z emulowanym dyskiem twardym lub kartą SD.
 \end{enumerate}
 
 %------------------------------------------------------------------------------
@@ -142,18 +144,108 @@ Toolchain \textrightarrow\ Toolchain type \textrightarrow\ External toolchain\\
 Toolchain \textrightarrow\ Toolchain \textrightarrow\ Sourcery CodeBench ARM 2014.05
 \end{ttblock}
 
-\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:
-
-\begin{ttblock}
-Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel
-\end{ttblock}
+%\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:
+%
+%\begin{ttblock}
+%Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel
+%\end{ttblock}
 \end{enumerate}
 
-Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisano w kolejnych podrozdziałach.
+Powyższa konfiguracja wstępna dotyczy systemu zarówno dla systemu administracyjnego jak i użytkowego. Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisano w kolejnych podrozdziałach.
 
 %------------------------------------------------------------------------------
 
-\subsection{TODO}
+\subsection{Partycjonowanie karty SD}
+\label{partitions}
+
+Na początku należało sformatować kartę SD, tak, aby partycja:
+\begin{itemize}
+	\item \textbf{Pierwsza} -- która zawiera pliki potrzebne do ząładowania systemu, w tym m.in. plik obrazu \emph{U-boot'a} \texttt{boot.scr} oraz 2 obrazy jąder Linux'a: dla systemu administracyjnego i użytkowego. Partycja ta jest sformatowna z wykorzystaniem systemu plików \texttt{vfat}.
+	\item \textbf{Druga} -- która zawiera system administracyjny. Sformatowana z wykorzystaniem systemu plików \texttt{ext4}.
+	\item \textbf{Trzecia} -- która zawiera system użytkownika. Sformatowana z wykorzystaniem systemem plików \texttt{ext4}.
+\end{itemize}
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja bootloader'a U-boot}
+
+Jako \emph{bootloader} został użyty \href{http://www.denx.de/wiki/u-boot/}{\emph{U-boot}}, którego konfiguracja sprowadza się do napisania skryptu \texttt{boot.txt}, z którego, za pomocą narzędzia \href{http://linux.die.net/man/1/mkimage}{\texttt{mkimage}}, można wygenerować plik \texttt{boot.scr}, który jest obrazem dla \emph{U-boot'a}, ładowanym w czasie startu \emph{RaspberryPi}. Komenda to wygenerowania obrazu \texttt{boot.scr}:
+\begin{verbatim}
+mkimage -T script -C none -n 'Start script' -d boot.txt boot.scr
+\end{verbatim}
+
+Dzięki \emph{bootloader'owi}, za pomocą przycisku na dołączonej płytce, mamy możliwość wyboru ładowania systemu administracyjnego lub użytkowego. Jeśli w czasie rozruchu systemu żaden przycisk nie zostanie wciśnięty, domyślnie zostanie załadowany system użytkowy, co jest sygnalizowane zapaleniem się zielonej lampki na dołączonej płytce.
+
+W przeciwnym razie, jeśli w czasie nieprzekraczającym \emph{timeout'u}, równym 1~sekundę, przycisk zostanie wciśnięty, zostanie załadowany system administracyjny. Co ważne, dzięki \href{https://www.kernel.org/doc/Documentation/filesystems/ramfs-rootfs-initramfs.txt}{\texttt{initramfs}}, system administracyjny zostanie załadowany do RAMu, dzięki czemu, mamy możliwość dokonywania niemal dowolnych zmian na wszystkich partycjach w czasie pracy administratora.
+
+Treść pliku \texttt{boot.txt}:
+\begin{lstlisting}[frame=single,breaklines,basicstyle=\small]
+gpio toggle 17;
+sleep 1;
+gpio toggle 17;
+if gpio input 10; then
+        gpio toggle 24;
+        setenv bootargs "${bootargs_orig} console=ttyAMA0"
+        load mmc 0:1 $fdt_addr_r bcm2708-rpi-b.dtb
+        load mmc 0:1 $kernel_addr_r zImage
+        bootz $kernel_addr_r - $fdt_addr_r
+fi;
+
+gpio toggle 23;
+
+fatload mmc 0:1 ${kernel_addr_r} zImage.std
+setenv bootargs "${bootargs_orig} console=ttyAMA0 root=/dev/mmcblk0p2 rootwait"
+bootz ${kernel_addr_r}
+\end{lstlisting}
+Jądro \texttt{zImage.std} to jądro systemu zwykłego użytkownika, a \texttt{zImage} to jądro administratora. \texttt{sleep 1} odpowiada za uśpienie \emph{bootloader'a} na 1~sekundę, tak, aby użytkownik miał czas na ewentualne wciśnięcie przycisku odpowiadającego za uruchomienie systemu administracyjnego.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja systemu użytkowego}
+
+Aby skonfigurować system użytkowy zgodnie z wymaganiami przedstawionymi w rozdziale~\ref{task}, należy w konfiguracji \emph{Buildroot'a} (tj. po wydaniu komendy np.~\texttt{make menuconfig}) wybrać:
+\begin{itemize}
+	\item \emph{Python'a} -- \texttt{BR2\_PACKAGE\_PYTHON},
+	\item Serwer WWW \emph{Tornado} -- \texttt{BR2\_PACKAGE\_PYTHON\_TORNADO}.
+\end{itemize}
+Ponadto należy w \emph{Buildroot'cie} ustawić \emph{Filesystem overlay}, dzięki któremu system automatycznie nawiąże połączenie z siecią, uruchomi \texttt{fsck} dla partycji \texttt{/dev/mmcblk0p3}, którą następnie zamontuje, a na koniec uruchomi serwer \emph{Tornado}, listujący HTML'owo pliki dostępne na tymże serwerze.
+
+\emph{Overlay} znajduje się w spakowanym załączniku do niniejszego raportu w katalogu \texttt{/overlay}. Należy zadbać o to, aby prawa wykonania do pliku \path{/overlay/etc/init.d/S50filesrv} pliku były dostatecznie wysokie (wywołując np. komendę \texttt{chmod +x S50filesrv}).
+
+W katalogu \path{/config/overlay} znajduje się również kod odpowiedzialny za wyświetlanie listy plików na serwerze, pobieranie plików z serwera i ładowanie plików na serwer, tj. pliki: \path{/config/overlay/root/server.py} oraz \path{/config/overlay/root/static/index.html}. Pliki te zostały te dostosowane do własnych potrzeb na podstawie \emph{Tornado File Lister'a}, opublikowanego na wolnej licencji \emph{MIT} na \emph{GitHub'ie}~\cite{www:file-lister}.
+
+Po skompilowaniu obrazu jądra systemu użytkowego i skopiowaniu go na pierwszą partycję karty SD pod nazwą \texttt{zImage.std}, należy jeszcze skopiować zawartość zbudowanego archiwum \texttt{rootfs.tar} na trzecią partycję karty SD (uprzednio ją formatując -- patrz \ref{partitions}). W archiwum tym znajduje się wspomniany wyżej \emph{overlay} systemu plików.
+
+Kompletna konfiguracja \emph{Buildroot'a} dla systemu użytkowego znajduje się w załączonym pliku \texttt{.config\_users}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja systemu administracyjnego}
+
+Aby skonfigurować system administracyjny zgodnie z wymaganiami przedstawionymi w rozdziale~\ref{task}, należy w konfiguracji \emph{Buildroot'a} (tj. po wydaniu komendy np.~\texttt{make menuconfig}) wybrać m.in.:
+\begin{itemize}
+	\item Narzędzia do obsługi systemów plików:
+	\begin{itemize}
+		\item \texttt{BR2\_PACKAGE\_E2FSPROGS},
+		\item \texttt{BR2\_PACKAGE\_E2FSPROGS\_RESIZE2FS},
+		\item \texttt{BR2\_PACKAGE\_DOSFSTOOLS\_MKFS\_FAT},
+		\item \texttt{BR2\_PACKAGE\_DOSFSTOOLS\_FSCK\_FAT},
+		\item \texttt{BR2\_PACKAGE\_DOSFSTOOLS\_MKFS\_FAT},
+	\end{itemize}
+	\item Narzędzia do (de)kompresji:
+	\begin{itemize}
+		\item \texttt{BR2\_PACKAGE\_ZIP},
+		\item \texttt{BR2\_PACKAGE\_UNRAR},
+	\end{itemize}
+	\item Wygodny edytor tekstu -- \texttt{BR2\_PACKAGE\_VIM},
+	\item \texttt{BR2\_PACKAGE\_BUSYBOX\_SHOW\_OTHERS},
+	\item Narzędzie \texttt{mkimage} generujące obrazy dla \emph{U-boot'a} -- \texttt{BR2\_PACKAGE\_UBOOT\_TOOLS\_MKIMAGE},
+	\item Serwer SSH -- \texttt{BR2\_PACKAGE\_DROPBEAR},
+	\item Generowanie \texttt{rootfs.tar} -- \texttt{BR2\_TARGET\_ROOTFS\_TAR}.
+\end{itemize}
+Niektóre z powyższych pakietów okazały się nadmiarowe (np. obsługa \texttt{zip}'a i \texttt{rar}'a), jednak zostały zawarte w załączonym pliku \texttt{.config}, ponieważ przed zrealizowaniem niniejszego laboratorium, autorzy nie mieli pewności czy narzędzia te nie okażą się przydatne.
+
+Kompletna konfiguracja \emph{Buildroot'a} dla systemu administracyjnego znajduje się w załączonym pliku \texttt{.config}.
 
 %------------------------------------------------------------------------------
 
@@ -165,7 +257,7 @@ Do niniejszego raportu załączono archiwum:
 \end{center}
 o sumie kontrolnej MD5:
 \begin{center}
-\texttt{TODO}
+\texttt{4338a03b3c2a8e13c69fde8479bc13e0}
 \end{center}
 które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
 \begin{enumerate}
@@ -183,9 +275,30 @@ Dla ustalenia uwagi, niech rozpakowany \emph{Buildroot} będzie w~katalogu:
 \begin{center}
 \texttt{tar xzvf lab0\labnumber\_BezaSpychala.tar.gz}
 \end{center}
-
-\item Po rozpakowaniu powstanie TODO, opisane w rozdziale~TODO. Należy je przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
 \end{enumerate}
+
+Po rozpakowaniu powstanie następująca struktura plików i katalogów:
+\dirtree{%
+.1 /.
+.2 boot.txt.
+.2 config.
+.3 overlay.
+.4 etc.
+.5 ifplugd.
+.6 ifplugd.action.
+.6 ifplugd.conf.
+.5 init.d.
+.6 S50filesrv.
+.6 ifplugd.
+.4 root.
+.5 server.py.
+.5 static.
+.6 index.html.
+.3 users.txt.
+.2 .config.
+.2 .config\_users.
+}
+Pliki te należy przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
 
 %------------------------------------------------------------------------------
 
