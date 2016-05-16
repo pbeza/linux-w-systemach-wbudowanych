@@ -10,6 +10,7 @@
 \usepackage{parskip}
 \usepackage{url}
 \usepackage{fancyvrb}
+\usepackage[margin=1.5in]{geometry}
 %\usepackage[fixlanguage]{babelbib}
 %\selectbiblanguage{polish}
 %\setlength{\parindent}{24pt}
@@ -102,7 +103,7 @@ System configuration \textrightarrow\ Run a getty (login prompt) after boot \tex
 \item Dla poprawy szybkości pobierania zależności oraz dla uniknięcia zablokowania IP laboratoryjnego \emph{gateway'a} przez serwery, z których grupowo pobieramy pakiety, należy ustawić IP lokalnego serwera serwującego część potrzebnego oprogramowania ustawiając opcję \texttt{BR2\_PRIMARY\_SITE}:
 
 \begin{ttblock}
-Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ Primary download site \textrightarrow\ http://192.168.137.24/dl
+Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\\Primary download site \textrightarrow\ http://192.168.137.24/dl
 \end{ttblock}
 
 \item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:
@@ -140,7 +141,11 @@ Aplikacja do sterownia diodami LED została napisana z wykorzystaniem wirtualneg
 \item \path{/sys/class/gpio/gpioNN/edge} -- ustala zbocze sygnału, na którym generowane jest systemowe przerwanie,
 \item \path{/sys/class/gpio/gpioNN/value} -- ustala wartość niską lub wysoką pinu.
 \end{itemize}
-Dzięki możliwości zapisu do ww. plików specjalnych, możemy sterować zapalaniem się i gaśnięciem poszczególnych diod LED oraz ustawiać na których zboczach sygnałów pochodzących od przycisków znajdujących się na płytce, mają być generowane przerwania, co zostało wykorzystane w dołączonej do niniejszego raportu aplikacji napisanej w języku \emph{C}.
+Dzięki możliwości zapisu do ww. plików specjalnych, możemy sterować zapalaniem się i gaśnięciem poszczególnych diod LED oraz ustawiać na których zboczach sygnałów pochodzących od przycisków znajdujących się na płytce, mają być generowane przerwania, co zostało wykorzystane w dołączonej do niniejszego raportu aplikacji napisanej w języku \emph{C}~\cite{www:elinux_gpio,www:gpio_benchmark}.
+
+\begin{sloppypar}
+Kod aplikacji został dostosowany do własnych potrzeb na podstawie źródła programu \texttt{Gpio-int-test.c}, opublikowanego przez firmę \href{http://www.ridgerun.com/}{\emph{RidgeRun}}, na licencji zezwalającej na wprowadzenia zmian kodu źródłowego, pod zastrzeżeniem zachowania noty licencyjnej w kodzie programu oraz pod zastrzeżeniem wspomnienia o źródle kodu programu, co niniejszym czynimy~\cite{www:code}.
+\end{sloppypar}
 
 %------------------------------------------------------------------------------
 
@@ -255,7 +260,7 @@ Do niniejszego raportu załączono archiwum:
 \end{center}
 o sumie kontrolnej MD5:
 \begin{center}
-\texttt{a60b350e45037cc4c57d6fbed842a15c}
+\texttt{2e43cc2c2334a2ae6a84b3095e3a11df}
 \end{center}
 które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
 \begin{enumerate}
