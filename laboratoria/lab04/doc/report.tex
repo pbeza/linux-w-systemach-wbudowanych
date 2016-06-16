@@ -1,0 +1,248 @@
+\documentclass{article}
+
+\usepackage[OT4,plmath]{polski}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage{fancyvrb}
+\usepackage{dirtree}
+\usepackage{listings}
+\usepackage[margin=1.5in]{geometry}
+\usepackage{float}
+%\usepackage[fixlanguage]{babelbib}
+%\selectbiblanguage{polish}
+%\setlength{\parindent}{24pt}
+%\linespread{1.1}
+
+\frenchspacing
+
+\newcommand{\labnumber}{4}
+\newcommand{\buildrootver}{2016.05}
+\newenvironment{ttblock}{\ttfamily}{\par}
+
+%------------------------------------------------------------------------------
+
+\title{Linux w systemach wbudowanych\\Laboratorium \#\labnumber}
+
+\author{\href{mailto:bezap@student.mini.pw.edu.pl}{Patryk \textsc{Bęza}}, \href{mailto:spychalam@student.mini.pw.edu.pl}{Maciej \textsc{Spychała}}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\begin{tabular}{ll}
+Grupa laboratoryjna: & A\\
+Data laboratorium \labnumber A: & 12 V 2016\\
+Data laboratorium \labnumber B: & 19 V 2016\\
+Wykładowca: & \href{mailto:wzab@ise.pw.edu.pl}{dr inż. Wojciech Zabołotny}
+\end{tabular}
+\end{center}
+
+%\begin{abstract}
+%Abstract text
+%\end{abstract}
+
+%------------------------------------------------------------------------------
+
+\section{Zadanie}
+\label{task}
+
+Zadaniem laboratorium było zrealizowanie przy pomocy płytki \texttt{Raspberry~Pi}, urządzenia, które będzie wyposażone w złożony interfejs użytkownika:
+\begin{itemize}
+	\item Przyciski i diody LED powinny być użyte do podstawowej obsługi urządzenia.
+	\item Interfejs WWW lub inny interfejs sieciowy powinien być użyty do bardziej zaawansowanych funkcji.
+\end{itemize}
+Najlepiej, żeby urządzenie przetwarzało dźwięk lub obraz. Stworzenie dokładnej specyfikacji było zadaniem pozostawionym zespołowi. Wybranym zadaniem laboratorium jest następujący temat, oznaczony literą~\textbf{A}:
+\begin{description}
+\item[Temat A]\hfill\\Wykorzystując kamerę USB, zrealizować system monitorujący obszar widziany przez kamerę. System powinien udostępniać funkcję wysyłania zdjęć robionych co określony czas na zewnętrzny serwer (aby zabezpieczyć nagrany materiał przed zniszczeniem wraz z urządzeniem przez ewentualnego intruza). Operator powinien mieć możliwość zdalnego włączenia funkcji podglądu monitorowanego obszaru ,,na żywo''.
+\end{description}
+
+%------------------------------------------------------------------------------
+
+\section{Konfiguracja}
+
+Poniżej opisano kroki jakie trzeba podjąć, aby skonfigurować \texttt{Buildroota} i \texttt{Raspberry~Pi} tak, aby spełnić wymagania zadania opisane w rozdziale~\ref{task}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja wstępna}
+
+Przed rozpoczęciem konfigurowania \texttt{Buildroota}, w taki sposób, aby spełniał warunki zadania, należy skonfigurować podstawowe parametry \texttt{Buildroota} zgodnie z \href{http://wzab.cba.pl/LINSW/poradnik\_laboratorium.pdf}{poradnikiem konfiguracji}, przygotowanym przez Wykładowcę~\cite{www:wzab}, tzn. należy:
+
+\begin{enumerate}
+\item Pobrać środowisko \texttt{Buildroot} w najnowszej dostępnej wersji, tj.~\texttt{\buildrootver}:
+
+\begin{ttblock}
+\$ wget https://buildroot.org/downloads/buildroot-\buildrootver.tar.bz2
+\end{ttblock}
+
+\item Rozpakować pobrane środowisko:
+
+\begin{ttblock}
+\$ tar xjf buildroot-\buildrootver.tar.bz2
+\end{ttblock}
+
+\item Wstępnie skonfigurować do działania z płytką \texttt{Raspberry~Pi}:
+
+\begin{ttblock}
+\$ cd buildroot-2016.5\\
+\$ make raspberrypi\_defconfig
+\end{ttblock}
+
+\item Uruchomić \texttt{make menuconfig}.
+
+\item Ustawić TTY opcją \texttt{BR2\_TARGET\_GENERIC\_GETTY\_PORT}:
+
+\begin{ttblock}
+System configuration \textrightarrow\ Run a getty (login prompt) after boot \textrightarrow\ TTY port \textrightarrow\ ttyAMA0
+\end{ttblock}
+
+\item Dla poprawy szybkości pobierania zależności oraz dla uniknięcia zablokowania IP laboratoryjnego \emph{gateway'a} przez serwery, z których grupowo pobieramy pakiety, należy ustawić IP lokalnego serwera serwującego część potrzebnego oprogramowania ustawiając opcję \texttt{BR2\_PRIMARY\_SITE}:
+
+\begin{ttblock}
+Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ Primary download site \textrightarrow\ http://192.168.137.24/dl
+\end{ttblock}
+
+\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:
+
+\begin{ttblock}
+Target options \textrightarrow\ Target ABI \textrightarrow\ EABI
+\end{ttblock}
+
+\item Zmienić \emph{Toolchain} opcjami \texttt{BR2\_TOOLCHAIN\_EXTERNAL} i\\ \texttt{BR2\_TOOLCHAIN\_EXTERNAL\_CODESOURCERY\_ARM}:
+
+\begin{ttblock}
+Toolchain \textrightarrow\ Toolchain type \textrightarrow\ External toolchain\\
+Toolchain \textrightarrow\ Toolchain \textrightarrow\ Sourcery CodeBench ARM 2014.05
+\end{ttblock}
+
+%\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:
+%
+%\begin{ttblock}
+%Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel
+%\end{ttblock}
+\end{enumerate}
+
+Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisano w kolejnych podrozdziałach.
+
+%------------------------------------------------------------------------------
+
+\subsection{Pakiety dodatkowe}
+
+W celu skonfigurowania \texttt{Buildroota} do pracy w trybie serwera \emph{streamującego} video oraz wysyłającego zrobione zdjęcia na serwer \texttt{FTP}, należy wybrać w \texttt{Buildroot'cie} następujące pakiety:
+\begin{center}
+\texttt{}
+\end{center}
+Warto zauważyć, że do \emph{streamingu} video został użyty \texttt{ffserver}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Sterownik kamery}
+
+W projekcie użyto kamery internetowej \texttt{Creative~Live!~Cam~Connect~HD~1080~(VF0760)}, która co prawda ma odpowiedni moduł w domyślnym kernelu, ale nie jest automatycznie ładowany. Ładowanie modułu można wykonać ręcznie za pomocą \texttt{modprobe}. W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany. W tym celu należało utworzyć plik \path{/etc/modules}, a w nim umieścić nazwę modułu, czyli w naszym przypadku \texttt{uvcvideo}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja \texttt{ffserver}}
+
+Konfiguracja serwera \texttt{ffserver} została zapisana w pliku konfiguracynym \path{/etc/ffserver.conf}. W konfiguracji umieszczono m.in. wpisy dotyczące:
+\begin{itemize}
+	\item port, na którym serwer działa -- wybrano port \texttt{8080},
+	\item sposobu kodowania \emph{streamingu} -- wyspecyfikowano dwa alternatywne: \texttt{webm} i \texttt{swf},
+	\item wymiarów nagrania wyrażonego w pikselach -- $352\times288$ w \texttt{swf} i TODO w \texttt{webm},
+	\item buforowania video itp.
+\end{itemize}
+
+%------------------------------------------------------------------------------
+
+\subsection{Interfejs WWW}
+\label{sec:www}
+
+W celu umożliwienia kontrolowania działania \texttt{Raspberry~Pi}, zainstalowano serwer WWW \texttt{tornado}, na którym skonfigurowano interfejs użytkownika z autoryzacją przez prosty formularz \texttt{HTML}.
+\begin{figure}[H]
+\centering
+\begin{tabular}{r|l}
+Login: & \texttt{admin}\\
+\hline
+Hasło: & \texttt{admin1}\\
+\end{tabular}
+\caption{Dane logowania do interfejsu WWW}
+\end{figure}
+Po zalogowaniu, użytkownik ma możliwość na żądanie przerwać oraz ponownie uruchomić \emph{streaming} video. Plik konfiguracyjny \texttt{tornado} ma nazwę \path{server.py}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Skrypty \texttt{init.d}}
+
+Aby uruchomić \texttt{ffserver} po każdym starcie \texttt{Raspberry~Pi}, stworzono skrypt, który umieszczono w katalogu \path{/etc/init.d}. Ten sam skrypt jest używany przy wymuszonym starcie \emph{streaming'u} przez interfejs WWW, opisany w rozdziale~\ref{sec:www}.
+
+Ponadto, w \path{/etc/init.d} umieszczono skrypt synchronizujący datę za pomocą protokołu~\texttt{NTP}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Wpisy w \texttt{cron}}
+
+Do zapewnienia regularnego \emph{uploadu} na serwer \texttt{FTP}, regularnie robionych zdjęć, wykorzystano \texttt{crona}.
+
+%------------------------------------------------------------------------------
+
+\section{Załącznik}
+
+Do niniejszego raportu załączono archiwum:
+\begin{center}
+\texttt{lab0\labnumber\_BezaSpychala.tar.gz},
+\end{center}
+o sumie kontrolnej MD5:
+\begin{center}
+\texttt{TODO}
+\end{center}
+które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
+\begin{enumerate}
+\item Rozpakować \texttt{Buildroota} do dowolnego katalogu:
+\begin{center}
+\texttt{tar xjvf buildroot-\buildrootver.tar.bz2}
+\end{center}
+
+\item W dowolnym katalogu rozpakować archiwum \texttt{lab0\labnumber\_BezaSpychala.tar.gz}:
+\begin{center}
+\texttt{tar xzvf lab0\labnumber\_BezaSpychala.tar.gz}
+\end{center}
+\end{enumerate}
+
+Po rozpakowaniu \texttt{lab0\labnumber\_BezaSpychala.tar.gz} powstanie następująca struktura plików i katalogów:
+\dirtree{%
+.1 /.
+.2 config.
+.3 overlay.
+.4 etc.
+.5 ifplugd.
+.6 ifplugd.action.
+.6 ifplugd.conf.
+.5 init.d.
+.6 S50filesrv.
+.6 ifplugd.
+.4 root.
+.5 server.py.
+.5 static.
+.6 index.html.
+.3 users.txt.
+.2 .config.
+.2 .config\_users.
+}
+Pliki te należy przenieść do odpowiadających katalogów w drzewie plików~\texttt{Buildroota}, zgodnie z niniejszą dokumentacją.
+
+%------------------------------------------------------------------------------
+
+\newpage
+\bibliographystyle{ieeetr}
+\bibliography{bibliography}
+
+\end{document}
