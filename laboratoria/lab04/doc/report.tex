@@ -24,6 +24,7 @@
 \newcommand{\labnumber}{4}
 \newcommand{\buildrootver}{2016.05}
 \newenvironment{ttblock}{\ttfamily}{\par}
+\renewcommand{\figurename}{Zdjęcie}
 
 %------------------------------------------------------------------------------
 
@@ -116,6 +117,7 @@ Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ P
 \begin{ttblock}
 Target options \textrightarrow\ Target ABI \textrightarrow\ EABI
 \end{ttblock}
+\textbf{Uwaga:} Wyłączenie obsługi modelu \emph{'hard' floating point} może niekorzystnie wpływać na szybkość transmisji video, jednak ze względów na konieczność wybór \emph{toolchainu} \texttt{Sourcery CodeBench ARM 2014.05}, wyłączamy obsługę tego modelu.
 
 \item Zmienić \emph{Toolchain} opcjami \texttt{BR2\_TOOLCHAIN\_EXTERNAL} i\\ \texttt{BR2\_TOOLCHAIN\_EXTERNAL\_CODESOURCERY\_ARM}:
 
@@ -139,7 +141,7 @@ Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisan
 
 W celu skonfigurowania \texttt{Buildroota} do pracy w trybie serwera \emph{streamującego} video oraz wysyłającego zrobione zdjęcia na serwer \texttt{FTP}, należy wybrać w \texttt{Buildroot'cie} następujące pakiety:
 \begin{center}
-\texttt{}
+\texttt{TODO, TODO, TODO, TODO}
 \end{center}
 Warto zauważyć, że do \emph{streamingu} video został użyty \texttt{ffserver}.
 
@@ -147,7 +149,17 @@ Warto zauważyć, że do \emph{streamingu} video został użyty \texttt{ffserver
 
 \subsection{Sterownik kamery}
 
-W projekcie użyto kamery internetowej \texttt{Creative~Live!~Cam~Connect~HD~1080~(VF0760)}, która co prawda ma odpowiedni moduł w domyślnym kernelu, ale nie jest automatycznie ładowany. Ładowanie modułu można wykonać ręcznie za pomocą \texttt{modprobe}. W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany. W tym celu należało utworzyć plik \path{/etc/modules}, a w nim umieścić nazwę modułu, czyli w naszym przypadku \texttt{uvcvideo}.
+W projekcie użyto kamery internetowej \texttt{Creative~Live!~Cam~Connect~HD~1080~(VF0760)}, przedstawionej na rysunku~\ref{fig:creative}, która co prawda ma odpowiedni moduł w domyślnym kernelu, ale nie jest on automatycznie ładowany w czasie startu \texttt{Raspberry~Pi}. Ładowanie modułu można wykonać ręcznie za pomocą komendy:
+\begin{verbatim}
+# modprobe uvcvideo
+\end{verbatim}
+gdzie \texttt{uvcvideo} to nazwa modułu obsługującego wykorzystaną kamerę. W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany. W tym celu należało utworzyć plik \path{/etc/modules}, a w nim umieścić nazwę modułu, czyli w naszym przypadku \texttt{uvcvideo}.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.6\textwidth]{img/creative}
+	\caption{Wykorzystana w projekcie kamera~\texttt{Creative~VF0760}}
+	\label{fig:creative}
+\end{figure}
 
 %------------------------------------------------------------------------------
 
