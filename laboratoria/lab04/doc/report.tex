@@ -79,7 +79,7 @@ Poniżej opisano kroki jakie trzeba podjąć, aby skonfigurować \texttt{Buildro
 Przed rozpoczęciem konfigurowania \texttt{Buildroota}, w taki sposób, aby spełniał warunki zadania, należy skonfigurować podstawowe parametry \texttt{Buildroota} zgodnie z \href{http://wzab.cba.pl/LINSW/poradnik\_laboratorium.pdf}{poradnikiem konfiguracji}, przygotowanym przez Wykładowcę~\cite{www:wzab}, tzn. należy:
 
 \begin{enumerate}
-\item Pobrać środowisko \texttt{Buildroot} w najnowszej dostępnej wersji, tj.~\texttt{\buildrootver}:
+\item Pobrać środowisko \texttt{Buildroot} w najnowszej dostępnej wersji. W dniu pisania niniejszego raportu najnowsza wersja \texttt{Buildroot} to~\texttt{\buildrootver}:
 
 \begin{ttblock}
 \$ wget https://buildroot.org/downloads/buildroot-\buildrootver.tar.bz2
@@ -149,15 +149,15 @@ Warto zauważyć, że do \emph{streamingu} video został użyty \texttt{ffserver
 
 \subsection{Sterownik kamery}
 
-W projekcie użyto kamery internetowej \texttt{Creative~Live!~Cam~Connect~HD~1080~(VF0760)}, przedstawionej na rysunku~\ref{fig:creative}, która co prawda ma odpowiedni moduł w domyślnym kernelu, ale nie jest on automatycznie ładowany w czasie startu \texttt{Raspberry~Pi}. Ładowanie modułu można wykonać ręcznie za pomocą komendy:
+W projekcie użyto kamery internetowej \texttt{Creative~Live!~Cam~Connect~HD~1080~(VF0760)}, przedstawionej na rysunku~\ref{fig:creative}, która co prawda ma odpowiedni moduł w domyślnym kernelu, ale nie jest on automatycznie ładowany w czasie startu \texttt{Raspberry~Pi}. Ładowanie modułu można wymusić ręcznie za pomocą komendy:
 \begin{verbatim}
 # modprobe uvcvideo
 \end{verbatim}
-gdzie \texttt{uvcvideo} to nazwa modułu obsługującego wykorzystaną kamerę. W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany. W tym celu należało utworzyć plik \path{/etc/modules}, a w nim umieścić nazwę modułu, czyli w naszym przypadku \texttt{uvcvideo}.
+gdzie \texttt{uvcvideo} to nazwa modułu obsługującego wykorzystaną kamerę. W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany. W tym celu należało utworzyć plik \path{/etc/modules}, a w nim umieścić nazwę modułu, czyli w naszym przypadku, dla kamery \texttt{Creative~VF0760} jest to moduł~\texttt{uvcvideo}.
 \begin{figure}[h]
 	\centering
 	\includegraphics[width=0.6\textwidth]{img/creative}
-	\caption{Wykorzystana w projekcie kamera~\texttt{Creative~VF0760}}
+	\caption{Kamera~\texttt{Creative~VF0760} wykorzystana w projekcie}
 	\label{fig:creative}
 \end{figure}
 
@@ -172,6 +172,12 @@ Konfiguracja serwera \texttt{ffserver} została zapisana w pliku konfiguracynym 
 	\item wymiarów nagrania wyrażonego w pikselach -- $352\times288$ w \texttt{swf} i TODO w \texttt{webm},
 	\item buforowania video itp.
 \end{itemize}
+
+Do uruchomienia \emph{streamingu} stworzono skrypt, którego najważniejszą częścią są komendy (TODO):
+\begin{verbatim}
+$ ffserver &
+$ ffmpeg -framerate 25 -video_size -i /dev/video0 -f v4l2 /tmp/cam1.ffm
+\end{verbatim}
 
 %------------------------------------------------------------------------------
 
@@ -202,7 +208,7 @@ Ponadto, w \path{/etc/init.d} umieszczono skrypt synchronizujący datę za pomoc
 
 \subsection{Wpisy w \texttt{cron}}
 
-Do zapewnienia regularnego \emph{uploadu} na serwer \texttt{FTP}, regularnie robionych zdjęć, wykorzystano \texttt{crona}.
+Do zapewnienia regularnej synchronizacji czasu przez protokół \texttt{NTP} oraz w celu regularnego \emph{uploadu} regularnie robionych zdjęć na serwer \texttt{FTP}, wykorzystano \emph{demona} systemowego \texttt{cron}.
 
 %------------------------------------------------------------------------------
 
