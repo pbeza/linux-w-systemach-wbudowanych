@@ -180,7 +180,17 @@ Aby poprawnie skopiować na nośnik SD stworzony przez \texttt{Buildroot'a} syst
 # mount /dev/mmcblk0p1 /mnt/sd1
 # mount /dev/mmcblk0p2 /mnt/sd2
 \end{lstlisting}
-\textbf{Uwaga:} nie należy montować wielokrotnie tej samej partycji w wielu różnych punktach montowania -- może to doprowadzić do nieoczekiwanych konsekwencji\footnote{TODO Really? Why?}.
+\textbf{Uwaga!} Nie należy montować wielokrotnie tej samej partycji w wielu różnych punktach montowania -- może to doprowadzić do nieoczekiwanych konsekwencji\footnote{TODO Really? Why?}.
+
+%------------------------------------------------------------------------------
+
+\subsection{Połączenie przez \texttt{minicom}}
+
+W celu komunikacji użytkownika przez port szeregowy z \texttt{RaspberryPi~3} należy zainstalować i uruchomić program \texttt{minicom}:
+\begin{verbatim}
+# minicom -o -D /dev/ttyUSB0
+\end{verbatim}
+\textbf{Uwaga!} Powyższą komendę uruchamiającą \texttt{minicom} należy wykonać jako użytkownik z prawami \texttt{root'a}. W przeciwnym razie \texttt{minicom} zakończy działanie bez komunikatu o błędzie.
 
 %------------------------------------------------------------------------------
 
