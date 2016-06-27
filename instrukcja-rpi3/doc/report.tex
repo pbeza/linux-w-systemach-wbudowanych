@@ -1,0 +1,366 @@
+\documentclass{article}
+
+\usepackage[OT4,plmath]{polski}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage{fancyvrb}
+\usepackage{dirtree}
+\usepackage{listings}
+\usepackage[margin=1.5in]{geometry}
+%\usepackage[fixlanguage]{babelbib}
+%\selectbiblanguage{polish}
+%\setlength{\parindent}{24pt}
+%\linespread{1.1}
+
+\frenchspacing
+
+\newcommand{\labnumber}{3}
+\newcommand{\brversion}{2016.05}
+\newenvironment{ttblock}{\ttfamily}{\par}
+
+%------------------------------------------------------------------------------
+
+\title{Konfiguracja Buildroot'a\\do pracy z RaspberryPi~3 -- wersja robocza}
+
+\author{\href{mailto:bezap@student.mini.pw.edu.pl}{Patryk \textsc{Bęza}}}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent Ten tutorial przedstawia kilka alternatywnych, minimalnych sposobów konfiguracji \texttt{Buildroot'a} do pracy z \texttt{RaspberryPi~3}. W szczególności poruszono takie tematy jak: komunikacja przez port szeregowy \texttt{UART}, \texttt{initramfs} i wykorzystanie bootloader'a \texttt{U-boot}.
+\end{abstract}
+
+%------------------------------------------------------------------------------
+
+\section{Cel}
+
+Głównym celem tego tutoriala jest opisanie procesu konfiguracji i budowania minimalnego systemu \texttt{Gnu/Linux} dla \texttt{RaspberryPi~3}, korzystając z środowiska \texttt{Buildroot}.
+
+Dodatkowymi wymaganiami są:
+\begin{itemize}
+	\item umożliwienie komunikacji szeregowej przez port szeregowy \texttt{UART},
+	\item możliwość włączenia \texttt{initramfs}\footnote{Włączenie \texttt{initramfs} umożliwia np. działanie \texttt{RaspberryPi} po wyjęciu karty SD ze slotu \texttt{RaspberryPi}.},
+	\item wykorzystanie własnoręcznie skompilowanego \texttt{U-boot'a}.
+\end{itemize}
+Ten tutorial powstał ze względu na brak kompleksowego opisu konfiguracji środowiska \texttt{Builroot} do pracy z \texttt{RaspberryPi~3}, spełniającego wyżej wymienione wymagania.
+
+%------------------------------------------------------------------------------
+
+\subsection{Partycjonowanie karty SD}
+\label{sec:partitions}
+
+Konfigurowany przez nas system będzie się składał z dwóch partycji, które są zazwyczaj nazwane przez jądro\footnote{Tak właściwie, to nie przez kernel, tylko przez \texttt{edev}, \texttt{udev} lub inny \texttt{*dev}.} systemu \texttt{GNU/Linux}:
+\begin{enumerate}
+	\item \texttt{/dev/mmcblk0p1} -- sformatowana z systemem plików \texttt{VFAT},
+	\item \texttt{/dev/mmcblk0p2} -- sformatowana z systemem plików \texttt{ext4}.
+\end{enumerate}
+Pierwsza z partycji, tzn. \texttt{/dev/mmcblk0p1}, jest przeznaczona na:
+\begin{itemize}
+	\item bootloader\footnote{W zależności od konfiguracji: \texttt{U-boot} lub ten automatycznie wygenerowany przez \texttt{Buildroot'a}.},
+	\item jądro systemu \texttt{GNU/Linux},
+	\item sterownik własnościowy \texttt{RaspberryPi~3} do GPU,
+	\item inne\footnote{TODO}.
+\end{itemize}
+Druga partycja, tzn. \texttt{/dev/mmcblk0p2}, jest przeznaczona na:
+\begin{itemize}
+	\item przestrzeń użytkową i \texttt{rootfs} w konfiguracji systemu z \textbf{wyłączonym} \texttt{initramfs},
+	\item przestrzeń użytkową w konfiguracji systemu z \textbf{włączonym} \texttt{initramfs}.
+\end{itemize}
+
+Aby sformatować kartę pamięci SD, należy uruchomić jako użytkownik \texttt{root}:
+\begin{verbatim}
+# fdisk /dev/mmcblk
+\end{verbatim}
+W ten sposób, w trybie interaktywnym, tworzymy nową tablicę partycji na karcie SD, składającą się z dwóch wyżej opisanych partycji.
+
+Po zachowaniu nowej tablicy partycji na karcie SD, należy sformatować\footnote{Uprzednio upewniając się, że partycje są \textbf{odmontowane}.} nowopowstałe partycje odpowiednią komendą \texttt{mkfs}, tzn. \texttt{mkfs.vfat} dla pierwszej partycji i \texttt{mkfs.ext4} dla drugiej partycji.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja wstępna}
+
+Przed rozpoczęciem konfigurowania \texttt{Buildroot'a} w sposób specyficzny dla rozpatrywanej, specyficznej konfiguracji \texttt{Buildroot'a}, należy skonfigurować parametry, które są wspólne dla wszystkich, dalej opisanych konfiguracji \texttt{Buildroot'a}. Parametry te zostały zaproponowane przez \emph{dr-a~inż.~Wojciecha~Zabołotnego} w poradniku konfiguracji \texttt{RaspberryPi~2} do laboratorium z przedmiotu pt.~\emph{Linux w systemach wbudowanych}~\cite{www:wzab}.
+\begin{enumerate}
+	\item Pobrać środowisko \emph{Buildroot} w najnowszej dostępnej wersji -- w dniu pisania tego poradnika jest to wersja.~\texttt{\brversion}:
+
+	\begin{ttblock}
+	\$ wget \url{https://buildroot.org/downloads/buildroot-\brversion.tar.bz2}
+	\end{ttblock}
+
+	\item Rozpakować pobrane archiwum:
+
+	\begin{ttblock}
+	\$ tar -xjf buildroot-\brversion.tar.bz2
+	\end{ttblock}
+
+	\item Wstępnie skonfigurować do działania z płytką \texttt{RaspberryPi 3}:
+
+	\begin{ttblock}
+	\$ cd buildroot-\brversion\\
+	\$ make raspberrypi3\_defconfig
+	\end{ttblock}
+	\textbf{Przy okazji:} warto przeczytać \path{${BR}/board/raspberrypi3/readme.txt}.
+
+	\item Uruchomić \texttt{make menuconfig}.
+
+	\item Ustawić TTY, tak, aby korzystał z portu szeregowego przez \texttt{UART} -- służy do tego opcja \texttt{BR2\_TARGET\_GENERIC\_GETTY\_PORT}:
+
+	\begin{ttblock}
+	System configuration \textrightarrow\ Run a getty (login prompt) after boot \textrightarrow\ TTY port \textrightarrow\ ttyS0
+	\end{ttblock}
+	\textbf{Uwaga!} W poprzednich wersjach \texttt{RaspberryPi} zamiast \texttt{ttyS0} należało w tym przypadku ustawić \texttt{ttyAMA0}.
+
+	\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:
+
+	\begin{ttblock}
+	Target options \textrightarrow\ Target ABI \textrightarrow\ EABI
+	\end{ttblock}
+
+	\item Zmienić \emph{Toolchain} opcjami \texttt{BR2\_TOOLCHAIN\_EXTERNAL} i\\ \texttt{BR2\_TOOLCHAIN\_EXTERNAL\_CODESOURCERY\_ARM}:
+
+	\begin{ttblock}
+	Toolchain \textrightarrow\ Toolchain type \textrightarrow\ External toolchain\\
+	Toolchain \textrightarrow\ Toolchain \textrightarrow\ Sourcery CodeBench ARM 2014.05
+	\end{ttblock}
+
+	%\item Dodać \texttt{initramfs} jako rodzaj generowanego obrazu \emph{filesystem'u}, pozostawiając zaznaczony również \texttt{ext2/3/4 variant (ext4)} -- opcja \\\texttt{BR2\_TARGET\_ROOTFS\_INITRAMFS}:
+	%
+	%\begin{ttblock}
+	%Filesystem images \textrightarrow\ initial RAM filesystem linked into linux kernel
+	%\end{ttblock}
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+
+\subsection{Połączenie UART z USB}
+
+Zanim podłączysz port szeregowy przez \texttt{UART} z konwerterem \texttt{USB}, upewnij się, że Twój konwerter używa logiki~\texttt{3.3V}. W przeciwnym razie narażasz się na nieodwracalne uszkodzenie \texttt{RaspberryPi}. \textbf{Nigdy} nie zasilaj \texttt{RaspberryPi} z dwóch źródeł -- tj. przez \texttt{UART} i \texttt{microUSB}.
+
+Schemat połączenia \texttt{UART} z \texttt{USB} przedstawia tabela~\ref{tab:schemat-uart}.
+\begin{table}[!h]
+\renewcommand{\familydefault}{\ttdefault}\normalfont
+\centering
+\begin{tabular}{l|l}
+Konwerter & RaspberryPi~3\\
+\hline\hline
+GND & GND (pin 6)\\
+\hline
+TxD & RxD (pin 8)\\
+\hline
+RxD & TxD (pin 10)\\
+\end{tabular}
+\caption{Schemat połączenia \texttt{UART} z konwerterem \texttt{USB}.}
+\label{tab:schemat-uart}
+\end{table}
+
+\texttt{TxD} pochodzi od \emph{Transmit Data}, a \texttt{RxD} od \emph{Receive Data}. Są to odpowiednio kanał: wysyłający dane i odbierający dane z podłączonego urządzenia -- w naszym wypadku z komputera.
+
+Po podłączeniu komputera z \texttt{RaspberryPi~3} zgodnie z tabelą~\ref{tab:schemat-uart}, możemy sprawdzić czy komputer wykrył połączenie \texttt{UART}. Jeśli wykrył, powinniśmy zobaczyć wynik zbliżony listingu~\ref{lst:lsusb}.
+\begin{lstlisting}[basicstyle=\ttfamily,breaklines=true,label={lst:lsusb},captionpos=b,caption={Wynik komendy \texttt{lsusb} po podłączeniu \texttt{RaspberryPi} do komputera}]
+$ lsusb | grep -i UART
+Bus 003 Device 002: ID 0403:6001 Future Technology Devices International, Ltd FT232 USB-Serial (UART) IC
+\end{lstlisting}
+
+%------------------------------------------------------------------------------
+
+\subsection{Kopiowanie systemu na nośnik SD}
+
+Aby poprawnie skopiować na nośnik SD stworzony przez \texttt{Buildroot'a} system operacyjny \texttt{GNU/Linux}, należy zamontować obie partycje opisane w rozdziale~\ref{sec:partitions}. Istnieje duża szansa na to, że system sam zamontuje wykryte partycje. Żeby sprawdzić czy system sam zamontował wykryte partycje, należy wydać polecenie \texttt{mount} i odnaleźć linijki odpowiadające partycji \texttt{/dev/mmcblk0p1} i \texttt{/dev/mmcblk0p2}. W przypadku gdyby system sam nie zamontował partycji, robimy to ręcznie:
+\begin{lstlisting}[basicstyle=\ttfamily,breaklines=true]
+# mount /dev/mmcblk0p1 /mnt/sd1
+# mount /dev/mmcblk0p2 /mnt/sd2
+\end{lstlisting}
+\textbf{Uwaga:} nie należy montować wielokrotnie tej samej partycji w wielu różnych punktach montowania -- może to doprowadzić do nieoczekiwanych konsekwencji\footnote{TODO Really? Why?}.
+
+%------------------------------------------------------------------------------
+
+\subsubsection{Zawartość pierwszej partycji}
+
+Zawartość partycji pierwszej:
+\begin{lstlisting}[basicstyle=\ttfamily,breaklines=true]
+# ls -la /mnt/sd1
+razem 7188
+drwxr-xr-x 2 patryk patryk    4096 cze  6 13:40 .
+drwxr-xr-x 4 root   root      4096 cze  5 19:06 ..
+-rw-r--r-- 1 patryk patryk   13592 cze  6 13:13 bcm2710-rpi-3-b.dtb
+-rw-r--r-- 1 patryk patryk   17924 cze  6 13:09 bootcode.bin
+-rw-r--r-- 1 patryk patryk     355 cze  6 13:33 boot.scr
+-rw-r--r-- 1 patryk patryk      63 cze  6 13:10 cmdline.txt
+-rw-r--r-- 1 patryk patryk     682 cze  6 13:09 config.txt
+-rw-r--r-- 1 patryk patryk    6481 cze  6 13:09 fixup.dat
+-rw-r--r-- 1 patryk patryk 2743320 cze  6 13:09 start.elf
+-rw-r--r-- 1 patryk patryk  337048 cze  6 13:40 u-boot.bin
+-rw-r--r-- 1 patryk patryk 4208400 cze  6 13:14 zImage
+\end{lstlisting}
+Wszystkie wyżej wymienione pliki poza 2 plikami \texttt{U-boot'a}, tj.:
+\begin{enumerate}
+	\item \texttt{boot.scr},
+	\item \texttt{u-boot.bin}
+\end{enumerate}
+to pliki wygenerowane przez \texttt{Buildroot'a} i zapisane w podkatalogach \path{${BR}/output/images}. Opcjonalnie, do wyżej wymienionych plików można dodać plik \texttt{boot.scr.source}, na podstawie którego został wygenerowany \texttt{boot.scr}.
+
+\textbf{Uwaga!} Aby korzystać z bootloader'a \texttt{U-boot}, a nie z tego zawartego w \texttt{zImage}, należy w pliku \texttt{config.txt} ustawić \texttt{kernel=u-boot.bin} zamiast domyślnego \texttt{kernel=zImage}.
+
+\textbf{Uwaga!} Bardzo istotne\footnote{Strata kilku dni szukania rozwiązania.} jest \href{https://www.raspberrypi.org/forums/viewtopic.php?f=28&t=141195}{ustawienie} \texttt{enable\_uart=1} do \texttt{config.txt}.
+
+%------------------------------------------------------------------------------
+
+\subsubsection{Zawartość drugiej partycji}
+
+Zawartość drugiej partycji składa się z plików rozpakowanych z pliku \texttt{rootfs.tar}, znajdujących się w katalogu \path{${BR}/output/images}.
+
+%------------------------------------------------------------------------------
+
+% TODO FIXME Dotąd jest opracowane. Dalsze rzeczy są do zmiany, bo nie są z innego raportu.
+
+%------------------------------------------------------------------------------
+
+\subsection{Konfiguracja bootloader'a U-boot}
+
+Jako \emph{bootloader} został użyty \href{http://www.denx.de/wiki/u-boot/}{\emph{U-boot}}, którego konfiguracja sprowadza się do napisania skryptu \texttt{boot.txt}, z którego, za pomocą narzędzia \href{http://linux.die.net/man/1/mkimage}{\texttt{mkimage}}, można wygenerować plik \texttt{boot.scr}, który jest obrazem dla \emph{U-boot'a}, ładowanym w czasie startu \emph{RaspberryPi}. Komenda to wygenerowania obrazu \texttt{boot.scr}:
+\begin{verbatim}
+mkimage -T script -C none -n 'Start script' -d boot.txt boot.scr
+\end{verbatim}
+
+%Dzięki \emph{bootloader'owi}, za pomocą przycisku na dołączonej płytce, mamy możliwość wyboru ładowania systemu administracyjnego lub użytkowego. Jeśli w czasie rozruchu systemu żaden przycisk nie zostanie wciśnięty, domyślnie zostanie załadowany system użytkowy, co jest sygnalizowane zapaleniem się zielonej lampki na dołączonej płytce.
+%
+%W przeciwnym razie, jeśli w czasie nieprzekraczającym \emph{timeout'u}, równym 1~sekundę, przycisk zostanie wciśnięty, zostanie załadowany system administracyjny. Co ważne, dzięki \href{https://www.kernel.org/doc/Documentation/filesystems/ramfs-rootfs-initramfs.txt}{\texttt{initramfs}}, system administracyjny zostanie załadowany do RAMu, dzięki czemu, mamy możliwość dokonywania niemal dowolnych zmian na wszystkich partycjach w czasie pracy administratora.
+%
+%Treść pliku \texttt{boot.txt}:
+%\begin{lstlisting}[frame=single,breaklines,basicstyle=\small]
+%gpio toggle 17;
+%sleep 1;
+%gpio toggle 17;
+%if gpio input 10; then
+%        gpio toggle 24;
+%        setenv bootargs "${bootargs_orig} console=ttyAMA0"
+%        load mmc 0:1 $fdt_addr_r bcm2708-rpi-b.dtb
+%        load mmc 0:1 $kernel_addr_r zImage
+%        bootz $kernel_addr_r - $fdt_addr_r
+%fi;
+%
+%gpio toggle 23;
+%
+%fatload mmc 0:1 ${kernel_addr_r} zImage.std
+%setenv bootargs "${bootargs_orig} console=ttyAMA0 root=/dev/mmcblk0p2 rootwait"
+%bootz ${kernel_addr_r}
+%\end{lstlisting}
+%Jądro \texttt{zImage.std} to jądro systemu zwykłego użytkownika, a \texttt{zImage} to jądro administratora. \texttt{sleep 1} odpowiada za uśpienie \emph{bootloader'a} na 1~sekundę, tak, aby użytkownik miał czas na ewentualne wciśnięcie przycisku odpowiadającego za uruchomienie systemu administracyjnego.
+
+%------------------------------------------------------------------------------
+
+%\subsection{Konfiguracja systemu użytkowego}
+%
+%Aby skonfigurować system użytkowy zgodnie z wymaganiami przedstawionymi w rozdziale~\ref{task}, należy w konfiguracji \emph{Buildroot'a} (tj. po wydaniu komendy np.~\texttt{make menuconfig}) wybrać:
+%\begin{itemize}
+%	\item \emph{Python'a} -- \texttt{BR2\_PACKAGE\_PYTHON},
+%	\item Serwer WWW \emph{Tornado} -- \texttt{BR2\_PACKAGE\_PYTHON\_TORNADO}.
+%\end{itemize}
+%Ponadto należy w \emph{Buildroot'cie} ustawić \emph{Filesystem overlay}, dzięki któremu system automatycznie nawiąże połączenie z siecią, uruchomi \texttt{fsck} dla partycji \texttt{/dev/mmcblk0p3}, którą następnie zamontuje, a na koniec uruchomi serwer \emph{Tornado}, listujący HTML'owo pliki dostępne na tymże serwerze.
+%
+%\emph{Overlay} znajduje się w spakowanym załączniku do niniejszego raportu w katalogu \texttt{/overlay}. Należy zadbać o to, aby prawa wykonania do pliku \path{/overlay/etc/init.d/S50filesrv} pliku były dostatecznie wysokie (wywołując np. komendę \texttt{chmod +x S50filesrv}).
+%
+%W katalogu \path{/config/overlay} znajduje się również kod odpowiedzialny za wyświetlanie listy plików na serwerze, pobieranie plików z serwera i ładowanie plików na serwer, tj. pliki: \path{/config/overlay/root/server.py} oraz \path{/config/overlay/root/static/index.html}. Pliki te zostały te dostosowane do własnych potrzeb na podstawie \emph{Tornado File Lister'a}, opublikowanego na wolnej licencji \emph{MIT} na \emph{GitHub'ie}~\cite{www:file-lister}.
+%
+%Po skompilowaniu obrazu jądra systemu użytkowego i skopiowaniu go na pierwszą partycję karty SD pod nazwą \texttt{zImage.std}, należy jeszcze skopiować zawartość zbudowanego archiwum \texttt{rootfs.tar} na trzecią partycję karty SD (uprzednio ją formatując -- patrz \ref{sec:partitions}). W archiwum tym znajduje się wspomniany wyżej \emph{overlay} systemu plików.
+%
+%Kompletna konfiguracja \emph{Buildroot'a} dla systemu użytkowego znajduje się w załączonym pliku \texttt{.config\_users}.
+
+%------------------------------------------------------------------------------
+
+%\subsection{Konfiguracja systemu administracyjnego}
+%
+%Aby skonfigurować system administracyjny zgodnie z wymaganiami przedstawionymi w rozdziale~\ref{task}, należy w konfiguracji \emph{Buildroot'a} (tj. po wydaniu komendy np.~\texttt{make menuconfig}) wybrać m.in.:
+%\begin{itemize}
+%	\item Narzędzia do obsługi systemów plików:
+%	\begin{itemize}
+%		\item \texttt{BR2\_PACKAGE\_E2FSPROGS},
+%		\item \texttt{BR2\_PACKAGE\_E2FSPROGS\_RESIZE2FS},
+%		\item \texttt{BR2\_PACKAGE\_DOSFSTOOLS\_MKFS\_FAT},
+%		\item \texttt{BR2\_PACKAGE\_DOSFSTOOLS\_FSCK\_FAT},
+%		\item \texttt{BR2\_PACKAGE\_DOSFSTOOLS\_MKFS\_FAT},
+%	\end{itemize}
+%	\item Narzędzia do (de)kompresji:
+%	\begin{itemize}
+%		\item \texttt{BR2\_PACKAGE\_ZIP},
+%		\item \texttt{BR2\_PACKAGE\_UNRAR},
+%	\end{itemize}
+%	\item Wygodny edytor tekstu -- \texttt{BR2\_PACKAGE\_VIM},
+%	\item \texttt{BR2\_PACKAGE\_BUSYBOX\_SHOW\_OTHERS},
+%	\item Narzędzie \texttt{mkimage} generujące obrazy dla \emph{U-boot'a} -- \texttt{BR2\_PACKAGE\_UBOOT\_TOOLS\_MKIMAGE},
+%	\item Serwer SSH -- \texttt{BR2\_PACKAGE\_DROPBEAR},
+%	\item Generowanie \texttt{rootfs.tar} -- \texttt{BR2\_TARGET\_ROOTFS\_TAR}.
+%\end{itemize}
+%Niektóre z powyższych pakietów okazały się nadmiarowe (np. obsługa \texttt{zip}'a i \texttt{rar}'a), jednak zostały zawarte w załączonym pliku \texttt{.config}, ponieważ przed zrealizowaniem niniejszego laboratorium, autorzy nie mieli pewności czy narzędzia te nie okażą się przydatne.
+%
+%Kompletna konfiguracja \emph{Buildroot'a} dla systemu administracyjnego znajduje się w załączonym pliku \texttt{.config}.
+
+%------------------------------------------------------------------------------
+
+%\section{Załącznik}
+%
+%Do niniejszej dokumentacji załączono archiwum:
+%\begin{center}
+%\texttt{buildroot-rpi3.tar.gz},
+%\end{center}
+%o sumie kontrolnej MD5:
+%\begin{center}
+%\texttt{TODO}
+%\end{center}
+%które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
+%\begin{enumerate}
+%\item W dowolnym katalogu, np. w \path{/tmp/test}, rozpakować \emph{Buildroot'a}:
+%\begin{center}
+%\texttt{tar xjvf buildroot-\brversion.tar.bz2}
+%\end{center}
+%
+%Dla ustalenia uwagi, niech rozpakowany \emph{Buildroot} będzie w~katalogu:
+%\begin{center}
+%\path{/tmp/test/buildroot_\brversion}
+%\end{center}
+%
+%\item W katalogu \path{/tmp/test} należy rozpakować archiwum \texttt{lab0\labnumber\_BezaSpychala.tar.gz}:
+%\begin{center}
+%\texttt{tar xzvf lab0\labnumber\_BezaSpychala.tar.gz}
+%\end{center}
+%\end{enumerate}
+%
+%Po rozpakowaniu powstanie następująca struktura plików i katalogów:
+%\dirtree{%
+%.1 /.
+%.2 boot.txt.
+%.2 config.
+%.3 overlay.
+%.4 etc.
+%.5 ifplugd.
+%.6 ifplugd.action.
+%.6 ifplugd.conf.
+%.5 init.d.
+%.6 S50filesrv.
+%.6 ifplugd.
+%.4 root.
+%.5 server.py.
+%.5 static.
+%.6 index.html.
+%.3 users.txt.
+%.2 .config.
+%.2 .config\_users.
+%}
+%Pliki te należy przenieść do odpowiadających katalogów w drzewie plików~\emph{Buildroot'a}.
+
+%------------------------------------------------------------------------------
+
+\bibliographystyle{ieeetr}
+\bibliography{bibliography}
+
+\end{document}
