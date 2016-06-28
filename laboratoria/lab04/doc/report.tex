@@ -14,10 +14,18 @@
 \usepackage{listings}
 \usepackage[margin=1.5in]{geometry}
 \usepackage{float}
+\usepackage{microtype}
+\usepackage{xcolor}
 %\usepackage[fixlanguage]{babelbib}
 %\selectbiblanguage{polish}
 %\setlength{\parindent}{24pt}
 %\linespread{1.1}
+
+\lstset{basicstyle=\ttfamily,
+	showstringspaces=false,
+	commentstyle=\color{red},
+	keywordstyle=\color{blue}
+}
 
 \frenchspacing
 
@@ -112,7 +120,8 @@ System configuration \textrightarrow\ Run a getty (login prompt) after boot \tex
 Build options \textrightarrow\ Mirrors and Download locations \textrightarrow\ Primary download site \textrightarrow\ http://192.168.137.24/dl
 \end{ttblock}
 
-\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcją \texttt{BR2\_ARM\_EABI}:
+\sloppy
+\item Wyłączyć obsługę modelu \emph{'hard' floating point} opcjami \texttt{BR2\_ARM\_EABI} i \texttt{BR2\_GCC\_TARGET\_FLOAT\_ABI="softfp"}:
 
 \begin{ttblock}
 Target options \textrightarrow\ Target ABI \textrightarrow\ EABI
@@ -139,10 +148,11 @@ Kolejne kroki konieczne do zrealizowania zadania niniejszego laboratorium opisan
 
 \subsection{Pakiety dodatkowe}
 
-W celu skonfigurowania \texttt{Buildroota} do pracy w trybie serwera \emph{streamującego} video oraz wysyłającego zrobione zdjęcia na serwer \texttt{FTP}, należy wybrać w \texttt{Buildroot'cie} następujące pakiety:
-\begin{center}
-\texttt{TODO, TODO, TODO, TODO}
-\end{center}
+Lista wszystkich pakietów \texttt{Buildroot'a} wymaganych do poprawnego skonfigurowania omawianego projektu jest zawarta w pliku \texttt{.config}, dostarczonym jako załącznik do niniejszej dokumentacji. W~szczególności najistotniejsze pakiety, które należy wybrać w \texttt{Buildroot'cie} (lub które zostały wybrane jako zależność do wybranych pakietów), to:
+\begin{verbatim}
+ffmpeg, ffserver, Python, libjpeg, libv4l, dropbear, ifplugd, lftp,
+ntpd, ntpdate, rsync, tornado, libdaemon, libevent, libffi, ncurses
+\end{verbatim}
 Warto zauważyć, że do \emph{streamingu} video został użyty \texttt{ffserver}.
 
 %------------------------------------------------------------------------------
@@ -167,10 +177,14 @@ gdzie \texttt{uvcvideo} to nazwa modułu obsługującego wykorzystaną kamerę. 
 
 Konfiguracja serwera \texttt{ffserver} została zapisana w pliku konfiguracynym \path{/etc/ffserver.conf}. W konfiguracji umieszczono m.in. wpisy dotyczące:
 \begin{itemize}
-	\item port, na którym serwer działa -- wybrano port \texttt{8080},
-	\item sposobu kodowania \emph{streamingu} -- wyspecyfikowano dwa alternatywne: \texttt{webm} i \texttt{swf},
-	\item wymiarów nagrania wyrażonego w pikselach -- $352\times288$ w \texttt{swf} i TODO w \texttt{webm},
-	\item buforowania video itp.
+	\item portu, na którym serwer działa -- wybrano port \texttt{Port~8080},
+	\item maksymalną liczbę równoczesnych połączeń \texttt{HTTP} -- wybrano \texttt{MaxHTTPConnections~30},
+	\item maksymalną liczbę równoczesnych żądań\footnote{\href{https://www.ffmpeg.org/ffserver.html}{Dokumentacja \texttt{ffserver'a}} mówi, że \texttt{MaxHTTPConnections} musi być zdefiniowane przed \texttt{MaxClients} oraz musi zachodzić nierówność $\texttt{MaxClients}\leq\texttt{MaxHTTPConnections}$.} połączeń -- wybrano \texttt{MaxClients~20},
+	\item sposobu kodowania \emph{streamingu} -- wybrano \texttt{mjpeg},
+	\item wymiarów nagrania wyrażonego w pikselach -- wybrano \texttt{VideoSize~320x240},
+	\item \emph{bit rate'u} -- wybrano \texttt{VideoBitRate~2000} -- wyrażone w kbit/s,
+	\item \emph{video frame rate} -- wybrano \texttt{VideoFrameRate 25} -- wyrażone w ilości ramek na sekundę,
+	\item maksymalnej wielkości \emph{feed file} dla \emph{streamingu} -- wybrano \texttt{FileMaxSize~5M} -- wyrażone w megabajtach.
 \end{itemize}
 
 Do uruchomienia \emph{streamingu} stworzono skrypt, którego najważniejszą częścią są komendy (TODO):
@@ -208,7 +222,14 @@ Ponadto, w \path{/etc/init.d} umieszczono skrypt synchronizujący datę za pomoc
 
 \subsection{Wpisy w \texttt{cron}}
 
-Do zapewnienia regularnej synchronizacji czasu przez protokół \texttt{NTP} oraz w celu regularnego \emph{uploadu} regularnie robionych zdjęć na serwer \texttt{FTP}, wykorzystano \emph{demona} systemowego \texttt{cron}.
+Do zapewnienia regularnej synchronizacji czasu przez protokół \texttt{NTP} oraz w celu regularnego \emph{uploadu} regularnie robionych zdjęć na serwer \texttt{FTP}, wykorzystano \emph{demona} systemowego \texttt{cron}. Konfiguracja uruchamiania \texttt{cron'a} została zachowana w pliku \path{/etc/crontab} i sprowadza się do uruchamiania co minutę skryptu \path{/root/sync.sh} o zawartości przedstawionej na listingu~\ref{lst:sync}.
+\begin{lstlisting}[caption={Zawartość pliku \texttt{/root/sync.sh}},label=lst:sync,language=bash,frame=single,breaklines,captionpos=b]
+#!/bin/sh
+SRC=/root/photos
+DEST=/tmp
+#DEST=root@127.0.0.1:/tmp
+rsync -a --remove-source-files \$SRC \$DEST
+\end{lstlisting}
 
 %------------------------------------------------------------------------------
 
@@ -216,11 +237,11 @@ Do zapewnienia regularnej synchronizacji czasu przez protokół \texttt{NTP} ora
 
 Do niniejszego raportu załączono archiwum:
 \begin{center}
-\texttt{lab0\labnumber\_BezaSpychala.tar.gz},
+\texttt{lab0\labnumber\_BezaSpychala.tar.gz}
 \end{center}
 o sumie kontrolnej MD5:
 \begin{center}
-\texttt{TODO}
+\texttt{11dd21e8c3104588546c71f6fc28c674}
 \end{center}
 które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikować projekt zgodnie z niżej opisaną procedurą:
 \begin{enumerate}
@@ -234,26 +255,42 @@ które jest minimalnym zestawem plików, pozwalającym odtworzyć i zweryfikowa�
 \texttt{tar xzvf lab0\labnumber\_BezaSpychala.tar.gz}
 \end{center}
 \end{enumerate}
-
+\newpage
 Po rozpakowaniu \texttt{lab0\labnumber\_BezaSpychala.tar.gz} powstanie następująca struktura plików i katalogów:
 \dirtree{%
-.1 /.
+.1 lab0\labnumber\_BezaSpychala.
 .2 config.
 .3 overlay.
 .4 etc.
+.5 crontab.
+.5 ffserver.conf.
 .5 ifplugd.
 .6 ifplugd.action.
 .6 ifplugd.conf.
 .5 init.d.
-.6 S50filesrv.
+.6 crond.
+.6 ffserver.
 .6 ifplugd.
+.6 photos.
+.6 S18modules.
+.6 S80crond.
+.6 S89udhcp.
+.6 S90ifplugd.
+.6 S98serverwww.
+.6 S90photos.
+.6 serverwww.
+.5 modules.
 .4 root.
+.5 photos.
 .5 server.py.
 .5 static.
 .6 index.html.
+.6 jquery-2.1.3.min.js.
+.6 jquery.clipchamp.mjpeg.player.js.
+.6 login.html.
+.5 sync.sh.
 .3 users.txt.
 .2 .config.
-.2 .config\_users.
 }
 Pliki te należy przenieść do odpowiadających katalogów w drzewie plików~\texttt{Buildroota}, zgodnie z niniejszą dokumentacją.
 
