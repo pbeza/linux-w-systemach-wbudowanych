@@ -5,6 +5,9 @@ W podkatalogach `src` katalogu `laboratoria` są trzymane pliki:
 
 - Buildroota,
 - skryptów,
-- C/C++,
+- C/C++.
 
-W podkatalogach `doc` katalogu `laboratoria` są trzymane LaTeX'owe raporty z laboratoriów oraz grafika w nich wykorzystywana.
+W podkatalogach `doc` katalogu `laboratoria` są trzymane
+- LaTeX'owe raporty z laboratoriów,
+- grafika wykorzystana w raportach,
+- `Makefile` tworzący PDF ze źródła LaTeX.
