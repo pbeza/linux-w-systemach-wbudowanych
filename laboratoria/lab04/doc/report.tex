@@ -217,6 +217,8 @@ Hasło: & \texttt{admin1}\\
 \end{figure}
 Po zalogowaniu, użytkownik ma możliwość na żądanie przerwać oraz ponownie uruchomić \emph{streaming} video. Podczas gdy włączony jest streaming obrazu wyłączane jest tworzenie plików z klatkami obrazu.
 
+W celu wyświetlania na bieżąco obrazu z kamery w przeglądarce internetowej skorzystano z gotowego skryptu \emph{jQuery Clipchamp MJPEG Player Plugin v0.0.1} oraz biblioteki \emph{jQuery 2.1.3}. Niestety ze względu na zabezpieczenia \emph{same-origin policy}, występujące w przeglądarkach internetowych, ponieważ skrypt odwołuje się do zasobów dostępnych pod innym portem (portem serwera ffserver), obraz nie jest wyświetlany w oknie przeglądarki (dostępny jest jedynie link, który działa w zewnętrznym odtwarzaczu video np. \emph{vlc}). Problem ten można spróbować rozwiązać forwardując stream z serwera ffserver za pomocą serwera tornado.
+
 %------------------------------------------------------------------------------
 
 \subsection{Zapisywanie klatek obrazu}
