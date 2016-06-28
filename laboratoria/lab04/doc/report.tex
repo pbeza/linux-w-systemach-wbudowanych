@@ -161,7 +161,9 @@ W projekcie użyto kamery internetowej \texttt{Creative~Live!~Cam~Connect~HD~108
 \begin{verbatim}
 # modprobe uvcvideo
 \end{verbatim}
-gdzie \texttt{uvcvideo} to nazwa modułu obsługującego wykorzystaną kamerę. W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany. W tym celu należało utworzyć plik \path{/etc/modules}, a w nim umieścić nazwę modułu, czyli w naszym przypadku, dla kamery \texttt{Creative~VF0760} jest to moduł~\texttt{uvcvideo}.
+gdzie \texttt{uvcvideo} to nazwa modułu obsługującego wykorzystaną kamerę. 
+
+W wersji końcowej projektu zautomatyzowano ten proces, tak aby przy każdym uruchomieniu \texttt{Raspberry~Pi} moduł kamery był ładowany samoczynnie. W tym celu stworzono skrypt startowy modules umieszczony w \path{/etc/init.d}, który wczytuje moduły wymienione w kolejnych wierszach pliku \path{/etc/modules} i ładuje je. W naszym przypadku, dla kamery \texttt{Creative~VF0760} plik zawiera jedynie moduł~\texttt{uvcvideo}.
 \begin{figure}[h]
 	\renewcommand\figurename{Zdjęcie}
 	\centering
@@ -180,7 +182,7 @@ Konfiguracja serwera \texttt{ffserver} została zapisana w pliku konfiguracynym 
 	\item maksymalną liczbę równoczesnych połączeń \texttt{HTTP} -- wybrano \texttt{MaxHTTPConnections~30},
 	\item maksymalną liczbę równoczesnych żądań\footnote{\href{https://www.ffmpeg.org/ffserver.html}{Dokumentacja \texttt{ffserver'a}} mówi, że \texttt{MaxHTTPConnections} musi być zdefiniowane przed \texttt{MaxClients} oraz musi zachodzić nierówność $\texttt{MaxClients}\leq\texttt{MaxHTTPConnections}$.} połączeń -- wybrano \texttt{MaxClients~20},
 	\item sposobu kodowania \emph{streamingu} -- wybrano \texttt{mjpeg},
-	\item wymiarów nagrania wyrażonego w pikselach -- wybrano \texttt{VideoSize~320x240},
+	\item rozdzielczości obrazu -- wybrano \texttt{VideoSize~320x240},
 	\item \emph{bit rate'u} -- wybrano \texttt{VideoBitRate~2000} -- wyrażone w kbit/s,
 	\item \emph{video frame rate} -- wybrano \texttt{VideoFrameRate 25} -- wyrażone w ilości ramek na sekundę,
 	\item maksymalnej wielkości \emph{feed file} dla \emph{streamingu} -- wybrano \texttt{FileMaxSize~5M} -- wyrażone w megabajtach.
@@ -196,13 +198,14 @@ ffmpeg -v verbose
        -s 320x240
        -i /dev/video0 http://localhost:8080/cam1.ffm > /root/ffmpeg.log 2>&1 &
 \end{lstlisting}
+Powyższy skrypt uruchamia najpierw serwer ffserver z konfiguracją zapisaną w domyślnym pliku konfiguracyjnym \path{/etc/ffserver.conf}, a następnie do utworzonego przez serwer \emph{feeda} podpina obraz z urządzenia \emph{/dev/video0}.
 
 %------------------------------------------------------------------------------
 
 \subsection{Interfejs WWW}
 \label{sec:www}
 
-W celu umożliwienia kontrolowania działania \texttt{Raspberry~Pi}, zainstalowano serwer WWW \texttt{tornado}, na którym skonfigurowano interfejs użytkownika z autoryzacją przez prosty formularz \texttt{HTML}. Konfiguracja interfejsu www jest w pliku \path{/root/server.py} oraz w katalogu \path{/root/static}.
+W celu umożliwienia kontrolowania działania \texttt{Raspberry~Pi}, zainstalowano serwer WWW \texttt{tornado}, na którym skonfigurowano interfejs użytkownika z autoryzacją przez prosty formularz \texttt{HTML}. Konfiguracja interfejsu www jest w pliku \path{/root/server.py}. Katalog \path{/root/static} zawiera szablony i statyczne pliki udostępniane przez serwer www.
 \begin{figure}[H]
 \centering
 \begin{tabular}{r|l}
@@ -212,21 +215,19 @@ Hasło: & \texttt{admin1}\\
 \end{tabular}
 \caption{Dane logowania do interfejsu WWW}
 \end{figure}
-Po zalogowaniu, użytkownik ma możliwość na żądanie przerwać oraz ponownie uruchomić \emph{streaming} video. Plik konfiguracyjny \texttt{tornado} ma nazwę \path{server.py}.
+Po zalogowaniu, użytkownik ma możliwość na żądanie przerwać oraz ponownie uruchomić \emph{streaming} video. Podczas gdy włączony jest streaming obrazu wyłączane jest tworzenie plików z klatkami obrazu.
 
 %------------------------------------------------------------------------------
 
-\subsection{Skrypty \texttt{init.d}}
+\subsection{Zapisywanie klatek obrazu}
 
-Aby uruchomić \texttt{ffserver} po każdym starcie \texttt{Raspberry~Pi}, stworzono skrypt, który umieszczono w katalogu \path{/etc/init.d}. Ten sam skrypt jest używany przy wymuszonym starcie \emph{streaming'u} przez interfejs WWW, opisany w rozdziale~\ref{sec:www}.
-
-Ponadto, w \path{/etc/init.d} umieszczono skrypt synchronizujący datę za pomocą protokołu~\texttt{NTP}.
+Aby uruchomić automatyczne zapisywanie klatek obrazu z kamery po każdym starcie \texttt{Raspberry~Pi}, stworzono skrypt \emph{photos}, który umieszczono w katalogu \path{/etc/init.d}. Ten sam skrypt jest używany przy wymuszonym starcie \emph{streaming'u} przez interfejs WWW, opisany w rozdziale~\ref{sec:www}, w celu dezaktywacji lub ponownej aktywacji zapisu.
 
 %------------------------------------------------------------------------------
 
 \subsection{Wpisy w \texttt{cron}}
 
-Do zapewnienia regularnej synchronizacji czasu przez protokół \texttt{NTP} oraz w celu regularnego \emph{uploadu} regularnie synchronizowanych zdjęć przez \texttt{rsync}, wykorzystano \emph{demona} systemowego \texttt{cron}. Konfiguracja uruchamiania \texttt{cron'a} została zachowana w pliku \path{/etc/crontab} i sprowadza się do uruchamiania co minutę skryptu \path{/root/sync.sh} o zawartości przedstawionej na listingu~\ref{lst:sync}.
+Do zapewnienia regularnej synchronizacji czasu przez protokół \texttt{NTP} oraz w celu regularnego \emph{uploadu} zapisywanych klatek z obrazem kamery przez \texttt{rsync}, wykorzystano \emph{demona} systemowego \texttt{cron}. Konfiguracja uruchamiania \texttt{cron'a} została zachowana w pliku \path{/etc/crontab} i sprowadza się do uruchamiania co minutę skryptu \path{/root/sync.sh} o zawartości przedstawionej na listingu~\ref{lst:sync}.
 \begin{lstlisting}[caption={Zawartość pliku \texttt{/root/sync.sh}},label=lst:sync,language=bash,frame=single,breaklines,captionpos=b]
 #!/bin/sh
 SRC=/root/photos
@@ -234,6 +235,7 @@ DEST=/tmp
 #DEST=root@127.0.0.1:/tmp
 rsync -a --remove-source-files $SRC $DEST
 \end{lstlisting}
+Stworzono również skrypt startowy \path{/etc/init.d/crond} uruchamiający \emph{demona} systemowego \texttt{cron}.
 
 %------------------------------------------------------------------------------
 
