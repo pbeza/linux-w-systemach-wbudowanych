@@ -223,6 +223,8 @@ Po zalogowaniu, użytkownik ma możliwość na żądanie przerwać oraz ponownie
 
 Aby uruchomić automatyczne zapisywanie klatek obrazu z kamery po każdym starcie \texttt{Raspberry~Pi}, stworzono skrypt \emph{photos}, który umieszczono w katalogu \path{/etc/init.d}. Ten sam skrypt jest używany przy wymuszonym starcie \emph{streaming'u} przez interfejs WWW, opisany w rozdziale~\ref{sec:www}, w celu dezaktywacji lub ponownej aktywacji zapisu.
 
+Pliki tworzone są co minutę i zapisywane są w katalogu \path{/root/photos}, a nazwy nadawane są zgodnie z aktualnym czasem systemowym wg maski \emph{\%Y-\%m-\%d\_\%H-\%M-\%S.jpg}.
+
 %------------------------------------------------------------------------------
 
 \subsection{Wpisy w \texttt{cron}}
